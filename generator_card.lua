@@ -103,14 +103,16 @@ end
 -- 从牌库中获得3张卡牌
 -- @param card_store 牌库
 -- @param side 分组ID，一般是1和2，表示两个对立面
-local choose3CardFromStore = function(card_store, side)
+-- @param counts 取几张卡牌，默认3张
+local chooseCardFromStore = function(card_store, side, counts)
 
+	counts = counts or 3;
 --	print(#card_store);
 	
 	local battle_cards = {};
 	
 	local cn = {};
-	for i=1,3 do
+	for i=1,counts do
 		table.insert(cn, genRand(#card_store, 1));
 	end
 	
@@ -188,10 +190,10 @@ local showDataAfterBattle = function(card_store, bExcel)
 		-- 过滤未出战
 		if card.winCnts + card.loseCnts > 0 then
 			if bExcel then
-				print(card.num, card.attack, card.hp, card.speed, (card.attack + card.hp + card.speed), card.winCnts, card.loseCnts, card.winCnts/(card.winCnts + card.loseCnts))
+				print(card.num, card.attack, card.hp, card.speed, (card.attack + card.hp + math.floor(card.speed/100)), card.winCnts, card.loseCnts, card.winCnts/(card.winCnts + card.loseCnts))
 			else
 				print(string.format("CardID:%04d, Attack:%d, HP:%d, Speed:%d, TotalAbility:%d, WinCnts:%d, LoseCnt:%d, WinPercent:%.2f%%", 
-				card.num, card.attack, card.hp, card.speed, (card.attack + card.hp + card.speed), card.winCnts, card.loseCnts, card.winCnts/(card.winCnts + card.loseCnts)*100));
+				card.num, card.attack, card.hp, card.speed, (card.attack + card.hp + math.floor(card.speed/100)), card.winCnts, card.loseCnts, card.winCnts/(card.winCnts + card.loseCnts)*100));
 			end
 		end
 	end
@@ -417,8 +419,8 @@ local card_store = readCardData();
 -- print("card_store's count", #card_store);
 
 -- 得到两个对战牌表
--- local card_1 = choose3CardFromStore(card_store, 1)
--- local card_2 = choose3CardFromStore(card_store, 2)
+-- local card_1 = chooseCardFromStore(card_store, 1)
+-- local card_2 = chooseCardFromStore(card_store, 2)
 
 -- 得到经过攻击序列结束后的表
 -- local sequence = attackTest(card_1, card_2, card_store);
@@ -427,7 +429,7 @@ local card_store = readCardData();
 -- showBattleCard(sequence);
 
 for i = 1, 200000 do
-	attackTest(choose3CardFromStore(card_store, 1), choose3CardFromStore(card_store, 2), card_store);
+	attackTest(chooseCardFromStore(card_store, 1), chooseCardFromStore(card_store, 2), card_store);
 end
 
 showDataAfterBattle(card_store, true);
