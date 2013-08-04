@@ -21,24 +21,30 @@ local prop_hitpoint_tbl =
 math.randomseed(os.time());
 
 -- 得到随机数，最大和最小值设定
+-- @param maxnum 随机值的最大值
+-- @param minium 随机值的最小值
 local genRand = function(maxnum, minium)
 	minium = minium or 0;
 	return math.floor(math.random()*100000 % maxnum + minium);
 end
 
-local generate_card_heap = function()
+-- 生成随机牌库
+-- @param total 生成的牌库数量
+local generate_card_heap = function(total)
 	local card_heap = {};
 	
-	for i = 1, 200 do
+	for i = 1, total do
 		local speed = genRand(prop_speed_tbl.maxium, prop_speed_tbl.minum);
 		local attack = genRand(prop_attack_tbl.maxium, prop_attack_tbl.minium);
 		local hp = genRand(prop_hitpoint_tbl.maxium, prop_hitpoint_tbl.minium);
 		
-		local card_data ={
+		local card_data =
+		{
 			speed = speed,
 			attack = attack,
 			hp = hp
 		};
+		
 		table.insert(card_heap, card_data);
 	end
 	
@@ -46,6 +52,7 @@ local generate_card_heap = function()
 end
 
 -- 保存卡牌数据到文件
+-- @param card_heap 生成的牌库
 local storeDataToFile = function(card_heap)
 	local data = {};
 	for idx, card in ipairs(card_heap) do
@@ -78,6 +85,7 @@ local readCardData = function()
 			local card = {};
 			card.num, card.attack, card.hp, card.speed = string.match(card_data, "(%d+)%s(%d+)%s(%d+)%s(%d+)");
 --			print(card.num, card.attack, card.hp, card.speed);
+
 			-- 增加胜利次数和战败次数
 			card.winCnts = 0;
 			card.loseCnts = 0;
@@ -93,6 +101,8 @@ local readCardData = function()
 end
 
 -- 从牌库中获得3张卡牌
+-- @param card_store 牌库
+-- @param side 分组ID，一般是1和2，表示两个对立面
 local choose3CardFromStore = function(card_store, side)
 
 --	print(#card_store);
@@ -131,6 +141,8 @@ local copyTbl = function(tbl)
 end
 
 -- 速度排序
+-- @param bc1 牌组1
+-- @param bc2 牌组2
 local speedSort = function(bc1, bc2)
 	-- 合并牌，得到总体攻击顺序
 	local attack_sequence = {};
@@ -154,6 +166,8 @@ local speedSort = function(bc1, bc2)
 end
 
 -- 可以根据战斗方来显示对应的攻击、血量、速度等数据
+-- @param sequence 序列表
+-- @param side 可选参数，显示对应一方的数据
 local showBattleCard = function(sequence, side)
 	for k, v in ipairs(sequence) do
 		if side then
@@ -167,6 +181,8 @@ local showBattleCard = function(sequence, side)
 end
 
 -- 显示战后有战绩的卡牌（隐藏未出战）
+-- @param card_store 牌库
+-- @param bExcel 用作excel输出，中间以tab键分隔
 local showDataAfterBattle = function(card_store, bExcel)
 	for k, card in ipairs(card_store) do
 		-- 过滤未出战
@@ -182,6 +198,9 @@ local showDataAfterBattle = function(card_store, bExcel)
 end
 
 -- 设置单卡的胜利和失败次数
+-- @param cardStore 用来设定记录每张卡牌的战斗数据的表，下标就是牌的ID
+-- @param card_group 对应的牌组
+-- @param winOrLose 表示当前组的输赢 值 win 表示胜利，其余表示失败
 local markCardFightResult = function(cardStore, card_groupe, winOrLose)
 
 	for k, card in ipairs(card_groupe) do
@@ -203,25 +222,30 @@ local markCardFightResult = function(cardStore, card_groupe, winOrLose)
 end
 
 -- 得到防守顺序辅助队列（内部数据全是引用）
+-- @param 防御组牌表
 local getDefenderSequence = function(cardDefenderGroup)
 	-- 得到一个攻击优先顺序辅助队列
 	local defenderSequence = {};
 	-- 生成两个顺序的数组，用来生成最终随机的排序，供乱序防守卡牌到防守辅助队列中决定防守的顺序
-	local assistSequence1 = {1, 2, 3}
-	local assistSequence2 = {}
+	local assistSequence = {}
+	local assistRndSequence = {}
+	-- 根据对战组的卡牌多少来生成序列数组
+	for idx = 1, #cardDefenderGroup do
+		table.insert(assistSequence, idx)
+	end
 	
 	-- 循环拷贝辅助顺序
-	while #assistSequence1 > 0 do
+	while #assistSequence > 0 do
 		-- 随机一个位置
-		local rnd = genRand(#assistSequence1, 1)
+		local rnd = genRand(#assistSequence, 1)
 		-- 将随机得出的位置的卡牌放入顺序队列中
-		table.insert(assistSequence2, assistSequence1[rnd]);
+		table.insert(assistRndSequence, assistSequence[rnd]);
 		-- 决定顺序的卡牌出队列
-		table.remove(assistSequence1, rnd);
+		table.remove(assistSequence, rnd);
 	end
 		
 	-- 根据决定的顺序生成防守辅助队列
-	for key, value in ipairs(assistSequence2) do
+	for key, value in ipairs(assistRndSequence) do
 		table.insert(defenderSequence, cardDefenderGroup[value])
 	end
 		
@@ -229,6 +253,9 @@ local getDefenderSequence = function(cardDefenderGroup)
 end
 
 -- 攻击测试
+-- @param card1 第一组卡牌
+-- @param card2 第二组卡牌
+-- @param card_store 总卡牌表，用以记录每张卡牌的战斗数据
 local attackTest = function(card1, card2, card_store)
 	-- 得到攻击对象的速度排序列表
 	local sequence = speedSort(card1, card2);
@@ -382,7 +409,7 @@ local attackTest = function(card1, card2, card_store)
 end
 
 -- 保存生成的随机牌库到文件
--- storeDataToFile(generate_card_heap());
+-- storeDataToFile(generate_card_heap(200));
 
 -- 得到从文件中的牌库到内存表
 local card_store = readCardData();
