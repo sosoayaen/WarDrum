@@ -2,13 +2,41 @@
 	服务器业务处理流程
 	小写字母开头的函数表示本地函数，大写的函数表示全局函数
 ]]
+package.path = ".\\?.lua;" .. package.path
+
+require "comm"
+require "card"
+
+print(Card.CardProperty:new())
+-- 按照各个角色的异能特性，整理异能
 
 -- 战斗函数
 -- @param cardGroupOne 玩家1选取好的卡组
 -- @param cardGroupTwo 玩家2选取好的卡组
 -- @return 返回一次战斗的结果，谁赢得比赛、回合、步骤序列（用于回放）
 local doBattle = function(cardGroupOne, cardGroupTwo)
+	local retData = {
+		bFirstWin = false	-- 先默认定义非第一个胜利
+	}
 	
+	-- 定义一个动画序列表
+	local sequences = {}
+	
+	--[[ 
+		战斗流程
+	]]
+	
+	--//////////////////////
+	-- 进场阶段
+	--//////////////////////
+	-- 1. 进场技能结算，把所有单位的技能发动，技能的发动按照其响应阶段决定
+	
+	
+	-- 2. 
+	
+	retData.sequences = sequences;
+	
+	return retData
 end
 
 -- 处理一次战役

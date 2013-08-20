@@ -1,3 +1,6 @@
+-- 通用函数模块
+module("comm", package.seeall)
+
 -- 速度属性，可以不显示影响，通过负重属性
 local prop_speed_tbl =
 {
@@ -23,14 +26,14 @@ math.randomseed(os.time());
 -- 得到随机数，最大和最小值设定
 -- @param maxnum 随机值的最大值
 -- @param minium 随机值的最小值
-local genRand = function(maxnum, minium)
+genRand = function(maxnum, minium)
 	minium = minium or 0;
 	return math.floor(math.random()*100000 % maxnum + minium);
 end
 
 -- 生成随机牌库
 -- @param total 生成的牌库数量
-local generate_card_heap = function(total)
+generate_card_heap = function(total)
 	local card_heap = {};
 	
 	for i = 1, total do
@@ -53,7 +56,8 @@ end
 
 -- 保存卡牌数据到文件
 -- @param card_heap 生成的牌库
-local storeDataToFile = function(card_heap)
+-- @param dataFileName 保存文件名称
+storeDataToFile = function(card_heap, dataFileName)
 	local data = {};
 	for idx, card in ipairs(card_heap) do
 		local c_data = string.format("%d\t%d\t%d\t%d", idx, card.attack, card.hp, card.speed);
@@ -61,7 +65,7 @@ local storeDataToFile = function(card_heap)
 		table.insert(data, c_data);
 	end
 	
-	local file = io.open("card_data.txt", "w+b");
+	local file = io.open(dataFileName or "card_data.txt", "w+b");
 
 	if file then
 		file:write(table.concat(data, "\n"));
@@ -70,9 +74,10 @@ local storeDataToFile = function(card_heap)
 end
 
 -- 从文件中读取卡牌数据到内存
-local readCardData = function()
+-- @param dataFileName 数据文件
+readCardData = function(dataFileName)
 
-	local readFile = io.open("card_data.txt", "r+b");
+	local readFile = io.open(dataFileName or "card_data.txt", "r+b");
 	
 	local card_heap = {};
 	
@@ -100,11 +105,11 @@ local readCardData = function()
 	return card_heap;
 end
 
--- 从牌库中获得3张卡牌
+-- 从牌库中获得N张卡牌
 -- @param card_store 牌库
 -- @param side 分组ID，一般是1和2，表示两个对立面
 -- @param counts 取几张卡牌，默认3张
-local chooseCardFromStore = function(card_store, side, counts)
+chooseCardFromStore = function(card_store, side, counts)
 
 	counts = counts or 3;
 --	print(#card_store);
@@ -134,31 +139,23 @@ local chooseCardFromStore = function(card_store, side, counts)
 	return battle_cards;
 end
 
-local copyTbl = function(tbl)
-	local retTbl = {};
-	for k, v in pairs(tbl) do
-		retTbl[k] = v;
-	end
-	return retTbl;
-end
-
 -- 速度排序
--- @param bc1 牌组1
--- @param bc2 牌组2
-local speedSort = function(bc1, bc2)
+-- @param card_array 牌组数组，可以有多个牌组组成，几个牌组表示一个玩家
+-- @return 把几个组的卡都组到一起
+speedSort = function(card_array)
+
 	-- 合并牌，得到总体攻击顺序
 	local attack_sequence = {};
 	
-	for k, v in ipairs(bc1) do
-		table.insert(attack_sequence, v);
-	end
-	
-	for k, v in ipairs(bc2) do
-		table.insert(attack_sequence, v);
-	end
-	
---	print("attack_sequence's count", #attack_sequence);
+	for idx, card_group in ipairs(card_array) do
 		
+		for k, v in ipairs(card_group) do
+			table.insert(attack_sequence, v)
+		end
+		
+	--	print("attack_sequence's count", #attack_sequence);
+	end
+	
 	-- 循环牌库，得到速度比值
 	table.sort(attack_sequence, function(one, two)
 		return one.speed > two.speed
@@ -167,98 +164,11 @@ local speedSort = function(bc1, bc2)
 	return attack_sequence;
 end
 
--- 可以根据战斗方来显示对应的攻击、血量、速度等数据
--- @param sequence 序列表
--- @param side 可选参数，显示对应一方的数据
-local showBattleCard = function(sequence, side)
-	for k, v in ipairs(sequence) do
-		if side then
-			if v.side == side then
-				print(string.format("cardNum:%d\tattack:%d\thp:%d\tspeed:%d\tside:%d", v.num, v.attack, v.hp, v.speed, v.side));
-			end
-		else
-			print(string.format("cardNum:%d\tattack:%d\thp:%d\tspeed:%d\tside:%d", v.num, v.attack, v.hp, v.speed, v.side));
-		end
-	end
-end
-
--- 显示战后有战绩的卡牌（隐藏未出战）
--- @param card_store 牌库
--- @param bExcel 用作excel输出，中间以tab键分隔
-local showDataAfterBattle = function(card_store, bExcel)
-	for k, card in ipairs(card_store) do
-		-- 过滤未出战
-		if card.winCnts + card.loseCnts > 0 then
-			if bExcel then
-				print(card.num, card.attack, card.hp, card.speed, (card.attack + card.hp + math.floor(card.speed/100)), card.winCnts, card.loseCnts, card.winCnts/(card.winCnts + card.loseCnts))
-			else
-				print(string.format("CardID:%04d, Attack:%d, HP:%d, Speed:%d, TotalAbility:%d, WinCnts:%d, LoseCnt:%d, WinPercent:%.2f%%", 
-				card.num, card.attack, card.hp, card.speed, (card.attack + card.hp + math.floor(card.speed/100)), card.winCnts, card.loseCnts, card.winCnts/(card.winCnts + card.loseCnts)*100));
-			end
-		end
-	end
-end
-
--- 设置单卡的胜利和失败次数
--- @param cardStore 用来设定记录每张卡牌的战斗数据的表，下标就是牌的ID
--- @param card_group 对应的牌组
--- @param winOrLose 表示当前组的输赢 值 win 表示胜利，其余表示失败
-local markCardFightResult = function(cardStore, card_groupe, winOrLose)
-
-	for k, card in ipairs(card_groupe) do
-		local cardID = card.num
-		
-		local cardData = cardStore[cardID];
-		
-		if not cardData then
-			error("cardData is nil");
-			return
-		end
-		
-		if winOrLose and winOrLose == "win" then
-			cardData.winCnts = cardData.winCnts + 1;
-		else
-			cardData.loseCnts = cardData.loseCnts + 1;
-		end
-	end
-end
-
--- 得到防守顺序辅助队列（内部数据全是引用）
--- @param 防御组牌表
-local getDefenderSequence = function(cardDefenderGroup)
-	-- 得到一个攻击优先顺序辅助队列
-	local defenderSequence = {};
-	-- 生成两个顺序的数组，用来生成最终随机的排序，供乱序防守卡牌到防守辅助队列中决定防守的顺序
-	local assistSequence = {}
-	local assistRndSequence = {}
-	-- 根据对战组的卡牌多少来生成序列数组
-	for idx = 1, #cardDefenderGroup do
-		table.insert(assistSequence, idx)
-	end
-	
-	-- 循环拷贝辅助顺序
-	while #assistSequence > 0 do
-		-- 随机一个位置
-		local rnd = genRand(#assistSequence, 1)
-		-- 将随机得出的位置的卡牌放入顺序队列中
-		table.insert(assistRndSequence, assistSequence[rnd]);
-		-- 决定顺序的卡牌出队列
-		table.remove(assistSequence, rnd);
-	end
-		
-	-- 根据决定的顺序生成防守辅助队列
-	for key, value in ipairs(assistRndSequence) do
-		table.insert(defenderSequence, cardDefenderGroup[value])
-	end
-		
-	return defenderSequence
-end
-
 -- 普通攻击测试
 -- @param card1 第一组卡牌
 -- @param card2 第二组卡牌
 -- @param card_store 总卡牌表，用以记录每张卡牌的战斗数据
-local attackNormalTest = function(card1, card2, card_store)
+attackNormalTest = function(card1, card2, card_store)
 	-- 得到攻击对象的速度排序列表
 	local sequence = speedSort(card1, card2);
 	
@@ -338,45 +248,6 @@ local attackNormalTest = function(card1, card2, card_store)
 					break
 				end
 			end
-			
---[[			战斗中，统一挑选敌方第一张卡牌作为攻击对象策略
-
-			-- 循环得到第一个活着的敌对单位
-			for idxInside = 1, 6 do
-				local cardTmp = sequence[idxInside];
-				
-				if sideAttack ~= cardTmp.side and cardTmp.hp > 0 then
-					nAttackCnt = nAttackCnt + 1;
--- 					print(string.format("=============circle %d=============", nCircle));
--- 					print(string.format("attacker's id is %d, defender's id is %d", cardAttacker.num, cardTmp.num));
-					local delta = 0;
-					if cardAttacker.attack < cardTmp.hp then
-						delta = cardAttacker.attack
-					else
-						delta = cardTmp.hp
-					end
-					
--- 					print("===>Delta is ", delta);
--- 					print(string.format("Attacker side is %d, Defender side is %d", cardAttacker.side, cardTmp.side));
--- 					print(string.format("Attacker card is %d, Defender card is %d", cardAttacker.num, cardTmp.num));
-					
-					-- 减去攻击力
-					cardTmp.hp = cardTmp.hp - cardAttacker.attack;
-					
-					if cardTmp.side == 1 then
-						nTotalHP1 = nTotalHP1 - delta;
-					elseif cardTmp.side == 2 then
-						nTotalHP2 = nTotalHP2 - delta;
-					end
-
--- 					print("Player1's total HP", nTotalHP1);
--- 					print("Player2's total HP", nTotalHP2);		
--- 					showBattleCard(sequence);
--- 					print("=============circle end=============");
-					break
-				end
-			end
---]]
 		end		
 		-- 是否有一方的血到0则结束战斗
 		if nTotalHP1 <= 0 then
@@ -410,26 +281,7 @@ local attackNormalTest = function(card1, card2, card_store)
 	return sequence;
 end
 
--- 保存生成的随机牌库到文件
--- storeDataToFile(generate_card_heap(200));
-
--- 得到从文件中的牌库到内存表
-local card_store = readCardData();
-
--- print("card_store's count", #card_store);
-
--- 得到两个对战牌表
--- local card_1 = chooseCardFromStore(card_store, 1)
--- local card_2 = chooseCardFromStore(card_store, 2)
-
--- 得到经过攻击序列结束后的表
--- local sequence = attackNormalTest(card_1, card_2, card_store);
-
--- 输出战后的结果
--- showBattleCard(sequence);
-
-for i = 1, 200000 do
-	attackNormalTest(chooseCardFromStore(card_store, 1), chooseCardFromStore(card_store, 2), card_store);
-end
-
-showDataAfterBattle(card_store, true);
+-- 正式版的攻击测试
+-- @param
+-- @param
+-- attackTest
