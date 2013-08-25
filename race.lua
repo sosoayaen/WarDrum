@@ -12,11 +12,11 @@ local const_mt = {
 --- 种族的常量
 -- @class table
 -- @name CONSTANTS
--- @field race_type <b>array</b> 种族类型定义 1 - "Human" 2 - "Undead" 3 - "Evil" 4 - "DemiGod" 5 - "Natural" 6 - "Mehanical"
--- @see race_type
+-- @field raceType <vt>array</vt> 种族类型定义 1 - "Human" 2 - "Undead" 3 - "Evil" 4 - "DemiGod" 5 - "Natural" 6 - "Mehanical"
+-- @see raceType
 CONSTANTS = {
 	--- 种族类型定义 
-	race_type = {
+	raceType = {
 		-- 人类，ID = 1
 		"Human",
 		-- 不死，ID = 2
@@ -37,12 +37,12 @@ setmetatable(CONSTANTS, const_mt)
 --- 种族基类
 -- @class table
 -- @name RaceClass
--- @field Evil <b>table</b> 恶魔
--- @field Undead <b>table</b> 不死
--- @field Human <b>table</b> 人类
--- @field DemiGod <b>table</b> 半神
--- @field Natural <b>table</b> 自然
--- @field Mehanical <b>table</b> 机械
+-- @field Evil <vt>table</vt> 恶魔
+-- @field Undead <vt>table</vt> 不死
+-- @field Human <vt>table</vt> 人类
+-- @field DemiGod <vt>table</vt> 半神
+-- @field Natural <vt>table</vt> 自然
+-- @field Mehanical <vt>table</vt> 机械
 RaceClass = {
 	-- 恶魔
 	Evil = {},
@@ -60,10 +60,36 @@ RaceClass = {
 
 --- 获取当前对象的种族
 -- @class function
--- @return 返回对应的种族类型
-function RaceClass:getRace()
-	if self.raceType then
-	end	
+-- @param nRaceType <vt>unsigned int</vt> 种族的ID，在每个卡牌的种族属性中
+-- @return <vt>string</vt> 返回对应的种族类型描述
+function RaceClass.GetRaceName(nRaceType)
+
+	local race = CONSTANTS.raceType[nRaceType] or "Undefined Race"
+	
+	return race
+end
+
+--- 获取种族描述对应的种族对象
+-- 入参一般为<a href="Card.html#CardPropertyClass">Card</a>属性中的 race 字段
+-- @class function
+-- @param raceType <vt>unsigned int, string</vt> 对应种族的key，可以是ID，可以使字符串描述
+-- @return <vt>table</vt> 返回对应的种族对象结构体（表）
+function RaceClass.GetRaceObj(raceType)
+
+	local raceObj = nil
+	
+	-- 判断是否raceType有效
+	local tp = type(raceType)
+	
+	if tp then
+		if tp == 'string' then
+			raceObj = RaceClass[tp]
+		elseif tp == 'number' then
+			raceObj = RaceClass[CONSTANTS.raceType[tp]];
+		end
+	end
+	
+	return raceObj
 end
 
 --- 创建种族
@@ -78,7 +104,7 @@ function RaceClass:new(raceType)
 	if tp == "string" then
 		race = self[raceType]
 	elseif tp == "number" then
-		race = self[CONSTANTS.race_type[raceType]]
+		race = self[CONSTANTS.raceType[raceType]]
 	end
 	
 	if not race then return end

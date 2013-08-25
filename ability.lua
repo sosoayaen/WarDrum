@@ -9,6 +9,12 @@ local const_mt = {
 	__newindex = function(t, k, v) end
 }
 
+-- 是否使用异能缓存标识（默认启用）
+local bUseCache = true
+
+-- 内部使用的异能数据缓存，默认为空，然后从数据库中获取数据后缓存在内存中
+local ExceptionalAbilityCache = {}
+
 --- 静态变量的定义表
 -- @class table
 -- @name CONSTANTS
@@ -117,13 +123,17 @@ setmetatable(CONSTANTS, const_mt)
 --- 异能属性基类
 -- @class table
 -- @name ExceptionalAbilityClass
--- @field keyWord 异能关键字（暂时保留）
--- @field description <code>string</code> 当前异能的描述
--- @field action <code>table</table> 响应属性 @see ExceptionalAbilityClass.action
--- @field property <code>table</code> 异能属性 @see ExceptionalAbilityClass.property
--- @field targetList 异能影响的目标列表
+-- @field id <vt>int</vt> 异能的ID，唯一
+-- @field keyWord <vt>string</vt> 异能关键字（暂时保留）
+-- @field description <vt>string</vt> 当前异能的描述
+-- @field action <vt>table</vt> 响应属性
+-- @field property <vt>table</vt> 异能属性
+-- @field targetList <vt>table</vt> 异能影响的目标列表
 -- @see CONSTANTS
 local ExceptionalAbilityClass = {
+	-- 异能的ID
+	id = -1
+	
 	-- 技能关键字
 	keyWord = "null",
 	
@@ -133,7 +143,7 @@ local ExceptionalAbilityClass = {
 	-- 响应属性，在什么时候响应
 	-- @class table
 	-- @field counts 响应次数
-	-- @field answerWindow 响应时机 @see CONSTANTS.answerWindow
+	-- @field answerWindow 响应时机 @see CONSTANTS
 	action = {
 		-- ////////////
 		-- 响应次数
@@ -191,6 +201,7 @@ local ExceptionalAbilityClass = {
 -- @class function
 -- @param o 可传可不传
 -- @return 返回一个ExceptionalAbilityClass的实例
+-- @see CONSTANTS
 function ExceptionalAbilityClass:new(o)
 	o = o or {}
 	
@@ -210,5 +221,44 @@ function ExceptionalAbilityClass:new(o)
 	return o
 end
 
--- 返回工厂类
-return ExceptionalAbilityClass
+local getAbilityObjFromDataBase = function(db, nID)
+	
+end
+
+--- 通过技能ID得到对应的技能实体
+-- @class function
+-- @param nID 技能的ID
+-- @return <vt>ExceptionalAbility</vt> 得到技能对象
+function ExceptionalAbilityClass.GetAbilityObj(nID)
+	
+	local abilityObj = nil
+	
+	if nID and nID >= 0 then
+		-- 先从缓存中获取，如果没有则从数据库中获取，并且把对应的对象加到缓存中
+		abilityObj = ExceptionalAbilityCache[nID]
+		
+		if not abilityObj then
+		
+			abilityObj = getAbilityObjFromDataBase("", nID
+		end
+	end
+	
+	return abilityObj
+end
+
+--- 清理异能缓存数据
+-- @class function
+function ExceptionalAbilityClass.ClearCache()
+
+	ExceptionalAbilityCache = {}
+	
+end
+
+--- 设置是否启用缓存
+-- @class function
+-- @param bEnable <vt>bool</vt> 启用标识
+function ExceptionalAbilityClass.EnableCache(bEnable)
+
+	bUseCache = bEnable
+	
+end

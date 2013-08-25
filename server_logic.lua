@@ -7,7 +7,7 @@ package.path = ".\\?.lua;" .. package.path
 require "comm"
 require "card"
 
-print(Card.CardProperty:new())
+print(Card.CardPropertyClass:new())
 -- 按照各个角色的异能特性，整理异能
 
 --- 战斗函数
