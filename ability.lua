@@ -81,6 +81,12 @@ CONSTANTS = {
 		-- 敌方全员
 		ALL_OPPONENT = 5
 	},
+	-- 异能种类
+	types = {
+		-- 光环类
+		HOLO = 1,
+		-- 
+	}
 	-- 异能选择目标单位类型策略
 	targetChooseTactics = {
 		-- 无效单位（保留）
@@ -140,26 +146,26 @@ local ExceptionalAbilityClass = {
 	-- 技能描述
 	description = "",
 	
-	-- 响应属性，在什么时候响应
-	-- @class table
-	-- @field counts 响应次数
-	-- @field answerWindow 响应时机 @see CONSTANTS
+	-- 响应属性，运行时生成数据，提供变量的存储
+	-- @runtime
 	action = {
 		-- ////////////
-		-- 响应次数
-		-- 大于0表示次数，-1表示无限响应, 0 表示不响应
+		-- 响应次数，首先从property.influenceResponseCount字段复制
+		-- 等于0时表示不再响应
 		counts = 0,
-		
-		-- ///////////
-		-- 响应时机
-		-- @see CONSTANTS.answerWindow
-		answerWindow = CONSTANTS.answerWindow.WINDOW_INVALID,
 	},
 	-- //////////////
 	-- 异能属性
 	-- @class table
 	-- @field targetInfluenceRange 异能目标范围
 	property = {
+
+		-- 异能种类
+		type = CONSTANTS.types.UNKNOW,
+		-- 响应时机
+		-- @see CONSTANTS.answerWindow
+		answerWindow = CONSTANTS.answerWindow.WINDOW_INVALID,
+		
 		-- 异能目标范围
 		-- 表明此异能的目标是全体还是单体，还有己方和敌方
 		-- @see CONSTANTS.targetInfluenceRange
@@ -221,8 +227,10 @@ function ExceptionalAbilityClass:new(o)
 	return o
 end
 
+-- 从数据库中获取对应ID的技能数据
+-- TODO: 
 local getAbilityObjFromDataBase = function(db, nID)
-	
+	return nil
 end
 
 --- 通过技能ID得到对应的技能实体
@@ -239,7 +247,12 @@ function ExceptionalAbilityClass.GetAbilityObj(nID)
 		
 		if not abilityObj then
 		
-			abilityObj = getAbilityObjFromDataBase("", nID
+			abilityObj = getAbilityObjFromDataBase("", nID)
+			
+			if bUseCache and abilityObj then
+				-- 缓存数据
+				ExceptionalAbilityCache[nID] = abilityObj
+			end
 		end
 	end
 	
