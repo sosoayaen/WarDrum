@@ -1,38 +1,45 @@
--- Í¨ÓÃº¯ÊıÄ£¿é
+--- é€šç”¨å‡½æ•°æ¨¡å—
+-- @class module
+-- @author Jason Tou sosoayaen@gmail.com
+-- @copyright Jason Tou
 module("comm", package.seeall)
 
--- ËÙ¶ÈÊôĞÔ£¬¿ÉÒÔ²»ÏÔÊ¾Ó°Ïì£¬Í¨¹ı¸ºÖØÊôĞÔ
+-- é€Ÿåº¦å±æ€§ï¼Œå¯ä»¥ä¸æ˜¾ç¤ºå½±å“ï¼Œé€šè¿‡è´Ÿé‡å±æ€§
 local prop_speed_tbl =
 {
-	minium = 1,	-- ×îĞ¡Öµ
-	maxium = 10	-- ×î´óÖµ
+	minium = 1,	-- æœ€å°å€¼
+	maxium = 10	-- æœ€å¤§å€¼
 }
 
 local prop_attack_tbl =
 {
-	minium = 1,	-- ×îĞ¡Öµ
+	minium = 1,	-- æœ€å°å€¼
 	maxium = 7
 }
 
 local prop_hitpoint_tbl =
 {
-	minium = 1, -- ×îĞ¡Öµ
+	minium = 1, -- æœ€å°å€¼
 	maxium = 10
 }
 
--- ³õÊ¼»¯Ëæ»úÖÖ×Ó
+-- åˆå§‹åŒ–éšæœºç§å­
 math.randomseed(os.time());
 
--- µÃµ½Ëæ»úÊı£¬×î´óºÍ×îĞ¡ÖµÉè¶¨
--- @param maxnum Ëæ»úÖµµÄ×î´óÖµ
--- @param minium Ëæ»úÖµµÄ×îĞ¡Öµ
+--- å¾—åˆ°éšæœºæ•°ï¼Œæœ€å¤§å’Œæœ€å°å€¼è®¾å®š
+-- @class function
+-- @param maxnum éšæœºå€¼çš„æœ€å¤§å€¼
+-- @param minium éšæœºå€¼çš„æœ€å°å€¼
+-- @return è¿”å›éšæœºå€¼
 genRand = function(maxnum, minium)
 	minium = minium or 0;
 	return math.floor(math.random()*100000 % maxnum + minium);
 end
 
--- Éú³ÉËæ»úÅÆ¿â
--- @param total Éú³ÉµÄÅÆ¿âÊıÁ¿
+--- ç”Ÿæˆéšæœºç‰Œåº“
+-- @class function
+-- @param total ç”Ÿæˆçš„ç‰Œåº“æ•°é‡
+-- @return <code>array</code> è¿”å›å¡ç‰Œå †æ•°ç»„ @see Card
 generate_card_heap = function(total)
 	local card_heap = {};
 	
@@ -54,9 +61,11 @@ generate_card_heap = function(total)
 	return card_heap;
 end
 
--- ±£´æ¿¨ÅÆÊı¾İµ½ÎÄ¼ş
--- @param card_heap Éú³ÉµÄÅÆ¿â
--- @param dataFileName ±£´æÎÄ¼şÃû³Æ
+--- ä¿å­˜å¡ç‰Œæ•°æ®åˆ°æ–‡ä»¶
+-- @class function
+-- @param card_heap ç”Ÿæˆçš„ç‰Œåº“
+-- @param dataFileName ä¿å­˜æ–‡ä»¶åç§°
+-- @return
 storeDataToFile = function(card_heap, dataFileName)
 	local data = {};
 	for idx, card in ipairs(card_heap) do
@@ -73,8 +82,10 @@ storeDataToFile = function(card_heap, dataFileName)
 	end
 end
 
--- ´ÓÎÄ¼şÖĞ¶ÁÈ¡¿¨ÅÆÊı¾İµ½ÄÚ´æ
--- @param dataFileName Êı¾İÎÄ¼ş
+--- ä»æ–‡ä»¶ä¸­è¯»å–å¡ç‰Œæ•°æ®åˆ°å†…å­˜
+-- @class function
+-- @param dataFileName æ•°æ®æ–‡ä»¶
+-- @return <code>array</code> è¿”å›å¡ç‰Œå †æ•°æ® @see Card.CardClass
 readCardData = function(dataFileName)
 
 	local readFile = io.open(dataFileName or "card_data.txt", "r+b");
@@ -82,7 +93,7 @@ readCardData = function(dataFileName)
 	local card_heap = {};
 	
 	if readFile then
-		-- ¶ÁÈ¡ÎÄ¼şÊı¾İ£¨°´ĞĞ£©
+		-- è¯»å–æ–‡ä»¶æ•°æ®ï¼ˆæŒ‰è¡Œï¼‰
 		local card_data = readFile:read("*l");
 		
 		while (card_data ~= nil) do
@@ -91,7 +102,7 @@ readCardData = function(dataFileName)
 			card.num, card.attack, card.hp, card.speed = string.match(card_data, "(%d+)%s(%d+)%s(%d+)%s(%d+)");
 --			print(card.num, card.attack, card.hp, card.speed);
 
-			-- Ôö¼ÓÊ¤Àû´ÎÊıºÍÕ½°Ü´ÎÊı
+			-- å¢åŠ èƒœåˆ©æ¬¡æ•°å’Œæˆ˜è´¥æ¬¡æ•°
 			card.winCnts = 0;
 			card.loseCnts = 0;
 			table.insert(card_heap, card);
@@ -105,10 +116,12 @@ readCardData = function(dataFileName)
 	return card_heap;
 end
 
--- ´ÓÅÆ¿âÖĞ»ñµÃNÕÅ¿¨ÅÆ
--- @param card_store ÅÆ¿â
--- @param side ·Ö×éID£¬Ò»°ãÊÇ1ºÍ2£¬±íÊ¾Á½¸ö¶ÔÁ¢Ãæ
--- @param counts È¡¼¸ÕÅ¿¨ÅÆ£¬Ä¬ÈÏ3ÕÅ
+--- ä»ç‰Œåº“ä¸­è·å¾—Nå¼ å¡ç‰Œ
+-- @class function
+-- @param card_store ç‰Œåº“
+-- @param side åˆ†ç»„IDï¼Œä¸€èˆ¬æ˜¯1å’Œ2ï¼Œè¡¨ç¤ºä¸¤ä¸ªå¯¹ç«‹é¢
+-- @param counts å–å‡ å¼ å¡ç‰Œï¼Œé»˜è®¤3å¼ 
+-- @return <code>array</code> è¿”å›é€‰å¥½çš„å¡ç»„ @see Card.CardPropertyClass
 chooseCardFromStore = function(card_store, side, counts)
 
 	counts = counts or 3;
@@ -132,19 +145,20 @@ chooseCardFromStore = function(card_store, side, counts)
 		end
 		
 		cardData.side = side;
-		--  ²åÈëÑ¡³öµÄÅÆÖĞ
+		--  æ’å…¥é€‰å‡ºçš„ç‰Œä¸­
 		table.insert(battle_cards, cardData);
 	end
 	
 	return battle_cards;
 end
 
--- ËÙ¶ÈÅÅĞò
--- @param card_array ÅÆ×éÊı×é£¬¿ÉÒÔÓĞ¶à¸öÅÆ×é×é³É£¬¼¸¸öÅÆ×é±íÊ¾Ò»¸öÍæ¼Ò
--- @return °Ñ¼¸¸ö×éµÄ¿¨¶¼×éµ½Ò»Æğ
+--- é€Ÿåº¦æ’åº
+-- @class function
+-- @param card_array ç‰Œç»„æ•°ç»„ï¼Œå¯ä»¥æœ‰å¤šä¸ªç‰Œç»„ç»„æˆï¼Œå‡ ä¸ªç‰Œç»„è¡¨ç¤ºä¸€ä¸ªç©å®¶
+-- @return æŠŠå‡ ä¸ªç»„çš„å¡éƒ½ç»„åˆ°ä¸€èµ·
 speedSort = function(card_array)
 
-	-- ºÏ²¢ÅÆ£¬µÃµ½×ÜÌå¹¥»÷Ë³Ğò
+	-- åˆå¹¶ç‰Œï¼Œå¾—åˆ°æ€»ä½“æ”»å‡»é¡ºåº
 	local attack_sequence = {};
 	
 	for idx, card_group in ipairs(card_array) do
@@ -156,7 +170,7 @@ speedSort = function(card_array)
 	--	print("attack_sequence's count", #attack_sequence);
 	end
 	
-	-- Ñ­»·ÅÆ¿â£¬µÃµ½ËÙ¶È±ÈÖµ
+	-- å¾ªç¯ç‰Œåº“ï¼Œå¾—åˆ°é€Ÿåº¦æ¯”å€¼
 	table.sort(attack_sequence, function(one, two)
 		return one.speed > two.speed
 	end);
@@ -164,18 +178,19 @@ speedSort = function(card_array)
 	return attack_sequence;
 end
 
--- ÆÕÍ¨¹¥»÷²âÊÔ
--- @param card1 µÚÒ»×é¿¨ÅÆ
--- @param card2 µÚ¶ş×é¿¨ÅÆ
--- @param card_store ×Ü¿¨ÅÆ±í£¬ÓÃÒÔ¼ÇÂ¼Ã¿ÕÅ¿¨ÅÆµÄÕ½¶·Êı¾İ
+--- æ™®é€šæ”»å‡»æµ‹è¯•
+-- @class function
+-- @param card1 ç¬¬ä¸€ç»„å¡ç‰Œ
+-- @param card2 ç¬¬äºŒç»„å¡ç‰Œ
+-- @param card_store æ€»å¡ç‰Œè¡¨ï¼Œç”¨ä»¥è®°å½•æ¯å¼ å¡ç‰Œçš„æˆ˜æ–—æ•°æ®
 attackNormalTest = function(card1, card2, card_store)
-	-- µÃµ½¹¥»÷¶ÔÏóµÄËÙ¶ÈÅÅĞòÁĞ±í
+	-- å¾—åˆ°æ”»å‡»å¯¹è±¡çš„é€Ÿåº¦æ’åºåˆ—è¡¨
 	local sequence = speedSort(card1, card2);
 	
 --	showBattleCard(sequence);
 	
 	local idx = nil;
-	-- ¼ÆËã×ÜÑªÁ¿
+	-- è®¡ç®—æ€»è¡€é‡
 	local nTotalHP1 = 0;
 	local nTotalHP2 = 0;
 	for idx = 1, 6 do
@@ -192,19 +207,19 @@ attackNormalTest = function(card1, card2, card_store)
 	
 	local nCircle = 1;
 	local nAttackCnt = 0;
-	-- Ñ­»·¹¥»÷Õß
+	-- å¾ªç¯æ”»å‡»è€…
 	idx = 1;
 	while idx <= 6 do
-		-- ¹¥»÷·½
+		-- æ”»å‡»æ–¹
 		local cardAttacker = sequence[idx];
-		-- ÕóÓª
+		-- é˜µè¥
 		local sideAttack = cardAttacker.side;
-		if cardAttacker.hp > 0 then	-- »î×Å¹¥»÷·½µÄµ¥Î»
-			--[[ Õ½¶·ÖĞ£¬¹¥»÷·½Ëæ»úÌôÑ¡µØ·½µ¥Î»¹¥»÷²ßÂÔ
-				Ê¹ÓÃËæ»úÑ¡ÔñµĞ·½À´¹¥»÷µÄËã·¨
-				1. Ê×ÏÈµÃµ½1¡«3µÄËæ»úÊı
-				2.·ÃÎÊµĞ·½¿¨ÅÆ£¬µÃµ½¶ÔÓ¦µÄnum
-				3.±éÀú¶ÔÕ½±í
+		if cardAttacker.hp > 0 then	-- æ´»ç€æ”»å‡»æ–¹çš„å•ä½
+			--[[ æˆ˜æ–—ä¸­ï¼Œæ”»å‡»æ–¹éšæœºæŒ‘é€‰åœ°æ–¹å•ä½æ”»å‡»ç­–ç•¥
+				ä½¿ç”¨éšæœºé€‰æ‹©æ•Œæ–¹æ¥æ”»å‡»çš„ç®—æ³•
+				1. é¦–å…ˆå¾—åˆ°1ï½3çš„éšæœºæ•°
+				2.è®¿é—®æ•Œæ–¹å¡ç‰Œï¼Œå¾—åˆ°å¯¹åº”çš„num
+				3.éå†å¯¹æˆ˜è¡¨
 			--]]
 			local cardDefenderGroup = nil
 			if sideAttack == 1 then
@@ -213,20 +228,20 @@ attackNormalTest = function(card1, card2, card_store)
 				cardDefenderGroup = card1
 			end
 			
-			-- µÃµ½Ò»¸ö¹¥»÷ÓÅÏÈË³Ğò¸¨Öú¶ÓÁĞ
+			-- å¾—åˆ°ä¸€ä¸ªæ”»å‡»ä¼˜å…ˆé¡ºåºè¾…åŠ©é˜Ÿåˆ—
 			local defenderSequence = getDefenderSequence(cardDefenderGroup)
 			
-			-- ×î¶àÑ­»·3´Î£¨·ÀÊØ¶ÓÁĞµÄ³¤¶È£©£¬Ö»Òª¹¥»÷µ½Ò»¸ö¼´¿Ì½áÊø
+			-- æœ€å¤šå¾ªç¯3æ¬¡ï¼ˆé˜²å®ˆé˜Ÿåˆ—çš„é•¿åº¦ï¼‰ï¼Œåªè¦æ”»å‡»åˆ°ä¸€ä¸ªå³åˆ»ç»“æŸ
 			for idxDefender, cardDefender in ipairs(defenderSequence) do
 				
 				assert(cardDefender.side ~= sideAttack, "Defender side wrong")
 
-				-- ÅĞ¶Ï·ÀÊØ·½ÊÇ·ñ´æ»î£¬Èç¹ûËÀÍöÔòÑ¡ÔñÏÂÒ»¸ö·ÀÊØ·½
+				-- åˆ¤æ–­é˜²å®ˆæ–¹æ˜¯å¦å­˜æ´»ï¼Œå¦‚æœæ­»äº¡åˆ™é€‰æ‹©ä¸‹ä¸€ä¸ªé˜²å®ˆæ–¹
 				if cardDefender.hp > 0 then
-					-- ±¾´ÎÕ½¶·¹¥»÷´ÎÊı¼Ó1
+					-- æœ¬æ¬¡æˆ˜æ–—æ”»å‡»æ¬¡æ•°åŠ 1
 					nAttackCnt = nAttackCnt + 1
 					
-					-- ¼ÆËã×éÄÚ¿ÛÑªÁ¿
+					-- è®¡ç®—ç»„å†…æ‰£è¡€é‡
 					local deltaBlood = 0;
 					if cardAttacker.attack < cardDefender.hp then
 						deltaBlood = cardAttacker.attack
@@ -234,22 +249,22 @@ attackNormalTest = function(card1, card2, card_store)
 						deltaBlood = cardDefender.hp
 					end
 					
-					-- ·ÀÊØ·½¿ÛÑª£¬¼õÈ¥¹¥»÷·½¹¥»÷Á¦£¬¿ÉÒÔ»÷´©
+					-- é˜²å®ˆæ–¹æ‰£è¡€ï¼Œå‡å»æ”»å‡»æ–¹æ”»å‡»åŠ›ï¼Œå¯ä»¥å‡»ç©¿
 					cardDefender.hp = cardDefender.hp - cardAttacker.attack
 					
-					-- ·ÀÊØ·½ÍÅ¶Ó¿ÛÑª
+					-- é˜²å®ˆæ–¹å›¢é˜Ÿæ‰£è¡€
 					if cardDefender.side == 1 then
 						nTotalHP1 = nTotalHP1 - deltaBlood
 					elseif cardDefender.side == 2 then
 						nTotalHP2 = nTotalHP2 - deltaBlood
 					end
 					
-					-- ¹¥»÷¹ıºóÔòÌø³ö·ÀÊØ¿ÛÑªÑ­»·£¬¿ªÊ¼Ñ¡³öÏÂÒ»¸ö¹¥»÷¶ÔÊÖ
+					-- æ”»å‡»è¿‡ååˆ™è·³å‡ºé˜²å®ˆæ‰£è¡€å¾ªç¯ï¼Œå¼€å§‹é€‰å‡ºä¸‹ä¸€ä¸ªæ”»å‡»å¯¹æ‰‹
 					break
 				end
 			end
 		end		
-		-- ÊÇ·ñÓĞÒ»·½µÄÑªµ½0Ôò½áÊøÕ½¶·
+		-- æ˜¯å¦æœ‰ä¸€æ–¹çš„è¡€åˆ°0åˆ™ç»“æŸæˆ˜æ–—
 		if nTotalHP1 <= 0 then
 -- 			print("Winner is Player1, circle", nCircle, "Attacks", nAttackCnt);
 			break;
@@ -259,17 +274,17 @@ attackNormalTest = function(card1, card2, card_store)
 		end
 		
 		idx = idx + 1;
-		-- ¿ªÊ¼ĞÂµÄÒ»ÂÖ
+		-- å¼€å§‹æ–°çš„ä¸€è½®
 		if idx > 6 then
 			nCircle = nCircle + 1;
 			idx = 1;
 		end
 	end
 	
-	-- Ñ­»·±í¸ñ£¬µÃµ½¶ÔÓ¦µÄID£¬È»ºóÔö¼ÓÉı¼¶ºÍÊ§°Ü´ÎÊı
+	-- å¾ªç¯è¡¨æ ¼ï¼Œå¾—åˆ°å¯¹åº”çš„IDï¼Œç„¶åå¢åŠ å‡çº§å’Œå¤±è´¥æ¬¡æ•°
 	if card_store then
 		if nTotalHP1 <= 0 then
-			-- Ôö¼Ó2×éÅÆµÄÊ¤Àû´ÎÊı
+			-- å¢åŠ 2ç»„ç‰Œçš„èƒœåˆ©æ¬¡æ•°
 			markCardFightResult(card_store, card2, "win");
 			markCardFightResult(card_store, card1, "lose");
 		else
@@ -281,7 +296,8 @@ attackNormalTest = function(card1, card2, card_store)
 	return sequence;
 end
 
--- ÕıÊ½°æµÄ¹¥»÷²âÊÔ
--- @param
--- @param
--- attackTest
+--- æ­£å¼ç‰ˆçš„æ”»å‡»æµ‹è¯•
+-- @class function
+attackTest = function()
+
+end

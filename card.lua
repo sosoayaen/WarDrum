@@ -1,42 +1,64 @@
+--- 卡牌模块
+-- @class module
+-- @author Jason Tou sosoayaen@gmail.com
+-- @copyright Jason Tou
 module("Card", package.seeall)
 
-CardProperty = {
-	-- ������
+--- 卡牌基类，定义了卡牌的一些基础属性
+-- @class table
+-- @name CardPropertyClass
+-- @field attack <code>int</code> 定义了此张卡牌的攻击力指
+-- @field attackType <code>int</code> 攻击属性（近战、远程、魔法、混乱） @see AttackType
+-- @field hitPoint <code>int</code> 定义了此张卡牌的血量
+-- @field speed <code>int</code> 定义了此张卡牌的速度
+-- @field id <code>unsigned int</code> 卡牌的编号（唯一）
+-- @field name <code>string</code> 卡牌的名称
+-- @field race <code>string</code> 卡牌的种族	@see Race.RaceClass
+-- @field rare <code>int</code> 卡牌的稀有度 @see Rare
+-- @field ability <code>array</code>异能，可以有多个，数组详见异能列表 @see Ability.ExceptionalAbilityClass
+-- @field numberLimit <code>int</code> 牌组限制，此卡牌可以在牌组中出现的次数
+CardPropertyClass = {
+	-- 攻击力
 	attack = 0,
-	-- Ѫ��
+	-- 攻击类型
+	attackType = 0,
+	-- 血量
 	hitPoint = 1,
-	-- �ٶ�
+	-- 速度
 	speed = 0,
-	-- ����Ψһ���
+	-- 卡牌唯一编号
 	id = -1,
-	-- ��������
-	name = "",
-	-- ����
-	race = "",
-	-- ���ƵǼ�
-	level = 0,
-	-- ���ܣ����Զ��
+	-- 卡牌名称
+	name = "Undefined card",
+	-- 种族
+	race = "Undefined race",
+	-- 卡牌稀有度
+	rare = 0,
+	-- 异能，可以多个
 	ablity = {},
-	-- �������ƣ������п���ӵ�е�����
+	-- 组牌限制，牌组中可以拥有的数量
 	numberLimit = 3,
-	
 }
 
--- @return �����Ƿ�λ�Ѿ�����
-function CardProperty:isDead()
+--- 判断当前卡牌是否已经死亡
+-- @class function
+-- @return 返回是否单位已经死亡
+function CardPropertyClass:isDead()
 	return self.hitPoint <= 0
 end
 
--- ����һ�����ƶ���
--- @return CardProperty Instance
-function CardProperty:new(o)
+--- 创建一个卡牌对象，所有的卡牌都要通过此函数生成
+-- @class function
+-- @param o 可传可不传，建议直接空
+-- @return CardPropertyClass 返回卡牌实例
+function CardPropertyClass:new(o)
 	o = o or {}
 	
 	setmetatable(o, self)
 	
 	self.__index = self
 	
-	-- ���������������ڵ�����
+	-- 不允许新增不存在的数据
 	self.__newindex = function(t, k) end
 	
 	self.__tostring = function(t)
@@ -45,16 +67,17 @@ function CardProperty:new(o)
 			local tps = type(value)
 			if tps == 'table' then
 				if key == 'ablity' then
-					-- ���һ�ſ��ƶ�Ӧ�ļ�������
+					-- 输出一张卡牌对应的技能属性
 					table.insert(tbl, string.format("%s=%s", key, table.concat(value, "/")))
 				end
 			elseif type(value) ~= 'function' then
 				table.insert(tbl, string.format("%s=%s", key, tostring(value)))
 			end
 		end)
-	return table.concat(tbl, ", ") end
+		return table.concat(tbl, ", ")
+	end
 	
 	return o
 end
 
-return CardProperty
+return CardPropertyClass

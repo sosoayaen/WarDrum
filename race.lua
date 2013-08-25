@@ -1,53 +1,80 @@
--- ÖÖ×åÉè¶¨
-module(package.seeall, "Race")
+--- ç§æ—æ¨¡å—
+-- @class module
+-- @author Jason Tou sosoayaen@gmail.com
+-- @copyright Jason Tou
+module("Race", package.seeall)
 
--- ÖÖ×åµÄ³£Á¿
+local const_mt = {
+	-- ä¸å…è®¸ä¸­é€”ä¿®æ”¹å€¼
+	__newindex = function(t, k, v) end
+}
+
+--- ç§æ—çš„å¸¸é‡
+-- @class table
+-- @name CONSTANTS
+-- @field race_type <b>array</b> ç§æ—ç±»å‹å®šä¹‰ 1 - "Human" 2 - "Undead" 3 - "Evil" 4 - "DemiGod" 5 - "Natural" 6 - "Mehanical"
+-- @see race_type
 CONSTANTS = {
-	-- ÖÖ×åÀàĞÍ¶¨Òå
+	--- ç§æ—ç±»å‹å®šä¹‰ 
 	race_type = {
-		-- ÈËÀà£¬ID = 1
+		-- äººç±»ï¼ŒID = 1
 		"Human",
-		-- ²»ËÀ£¬ID = 2
+		-- ä¸æ­»ï¼ŒID = 2
 		"Undead",
-		-- ¶ñÄ§£¬ID = 3
+		-- æ¶é­”ï¼ŒID = 3
 		"Evil",
-		-- °ëÉñ£¬ID = 4
-		"Demigod",
-		-- ×ÔÈ»£¬ID = 5
+		-- åŠç¥ï¼ŒID = 4
+		"DemiGod",
+		-- è‡ªç„¶ï¼ŒID = 5
 		"Natural",
-		-- »úĞµ,£¬ID = 6
+		-- æœºæ¢°,ï¼ŒID = 6
 		"Mehanical"
 	}
 }
 
+setmetatable(CONSTANTS, const_mt)
+
+--- ç§æ—åŸºç±»
+-- @class table
+-- @name RaceClass
+-- @field Evil <b>table</b> æ¶é­”
+-- @field Undead <b>table</b> ä¸æ­»
+-- @field Human <b>table</b> äººç±»
+-- @field DemiGod <b>table</b> åŠç¥
+-- @field Natural <b>table</b> è‡ªç„¶
+-- @field Mehanical <b>table</b> æœºæ¢°
 RaceClass = {
-	-- ¶ñÄ§
+	-- æ¶é­”
 	Evil = {},
-	-- ²»ËÀ
+	-- ä¸æ­»
 	Undead = {},
-	-- ÈËÀà
+	-- äººç±»
 	Human = {},
-	-- °ëÉñ
+	-- åŠç¥
 	DemiGod = {},
-	-- ×ÔÈ»
+	-- è‡ªç„¶
 	Natural = {},
-	-- »úĞµ
+	-- æœºæ¢°
 	Mehanical = {}
 }
 
--- @brief »ñÈ¡µ±Ç°¶ÔÏóµÄÖÖ×å
+--- è·å–å½“å‰å¯¹è±¡çš„ç§æ—
+-- @class function
+-- @return è¿”å›å¯¹åº”çš„ç§æ—ç±»å‹
 function RaceClass:getRace()
-	if self.raceType
+	if self.raceType then
 	end	
 end
 
--- @brief ´´½¨ÖÖ×å
--- @param raceType ¿ÉÒÔÊÇstring£¬¿ÉÒÔÊÇnumber
+--- åˆ›å»ºç§æ—
+-- @class function
+-- @param raceType å¯ä»¥æ˜¯stringï¼Œå¯ä»¥æ˜¯number
+-- @return è¿”å›ä¸€ä¸ªç§æ—çš„å®ä¾‹
 function RaceClass:new(raceType)
 	local tp = type(raceType)
 	
 	local race = nil
-	-- µÃµ½¾ßÌåµÄ¶ÔÏó
+	-- å¾—åˆ°å…·ä½“çš„å¯¹è±¡
 	if tp == "string" then
 		race = self[raceType]
 	elseif tp == "number" then

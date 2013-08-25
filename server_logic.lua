@@ -1,6 +1,6 @@
 --[[
-	·şÎñÆ÷ÒµÎñ´¦ÀíÁ÷³Ì
-	Ğ¡Ğ´×ÖÄ¸¿ªÍ·µÄº¯Êı±íÊ¾±¾µØº¯Êı£¬´óĞ´µÄº¯Êı±íÊ¾È«¾Öº¯Êı
+	æœåŠ¡å™¨ä¸šåŠ¡å¤„ç†æµç¨‹
+	å°å†™å­—æ¯å¼€å¤´çš„å‡½æ•°è¡¨ç¤ºæœ¬åœ°å‡½æ•°ï¼Œå¤§å†™çš„å‡½æ•°è¡¨ç¤ºå…¨å±€å‡½æ•°
 ]]
 package.path = ".\\?.lua;" .. package.path
 
@@ -8,28 +8,29 @@ require "comm"
 require "card"
 
 print(Card.CardProperty:new())
--- °´ÕÕ¸÷¸ö½ÇÉ«µÄÒìÄÜÌØĞÔ£¬ÕûÀíÒìÄÜ
+-- æŒ‰ç…§å„ä¸ªè§’è‰²çš„å¼‚èƒ½ç‰¹æ€§ï¼Œæ•´ç†å¼‚èƒ½
 
--- Õ½¶·º¯Êı
--- @param cardGroupOne Íæ¼Ò1Ñ¡È¡ºÃµÄ¿¨×é
--- @param cardGroupTwo Íæ¼Ò2Ñ¡È¡ºÃµÄ¿¨×é
--- @return ·µ»ØÒ»´ÎÕ½¶·µÄ½á¹û£¬Ë­Ó®µÃ±ÈÈü¡¢»ØºÏ¡¢²½ÖèĞòÁĞ£¨ÓÃÓÚ»Ø·Å£©
-local doBattle = function(cardGroupOne, cardGroupTwo)
+--- æˆ˜æ–—å‡½æ•°
+-- @class function
+-- @param cardGroupOne ç©å®¶1é€‰å–å¥½çš„å¡ç»„
+-- @param cardGroupTwo ç©å®¶2é€‰å–å¥½çš„å¡ç»„
+-- @return è¿”å›ä¸€æ¬¡æˆ˜æ–—çš„ç»“æœï¼Œè°èµ¢å¾—æ¯”èµ›ã€å›åˆã€æ­¥éª¤åºåˆ—ï¼ˆç”¨äºå›æ”¾ï¼‰
+local function doBattle(cardGroupOne, cardGroupTwo)
 	local retData = {
-		bFirstWin = false	-- ÏÈÄ¬ÈÏ¶¨Òå·ÇµÚÒ»¸öÊ¤Àû
+		bFirstWin = false	-- å…ˆé»˜è®¤å®šä¹‰éç¬¬ä¸€ä¸ªèƒœåˆ©
 	}
 	
-	-- ¶¨ÒåÒ»¸ö¶¯»­ĞòÁĞ±í
+	-- å®šä¹‰ä¸€ä¸ªåŠ¨ç”»åºåˆ—è¡¨
 	local sequences = {}
 	
 	--[[ 
-		Õ½¶·Á÷³Ì
+		æˆ˜æ–—æµç¨‹
 	]]
 	
 	--//////////////////////
-	-- ½ø³¡½×¶Î
+	-- è¿›åœºé˜¶æ®µ
 	--//////////////////////
-	-- 1. ½ø³¡¼¼ÄÜ½áËã£¬°ÑËùÓĞµ¥Î»µÄ¼¼ÄÜ·¢¶¯£¬¼¼ÄÜµÄ·¢¶¯°´ÕÕÆäÏìÓ¦½×¶Î¾ö¶¨
+	-- 1. è¿›åœºæŠ€èƒ½ç»“ç®—ï¼ŒæŠŠæ‰€æœ‰å•ä½çš„æŠ€èƒ½å‘åŠ¨ï¼ŒæŠ€èƒ½çš„å‘åŠ¨æŒ‰ç…§å…¶å“åº”é˜¶æ®µå†³å®š
 	
 	
 	-- 2. 
@@ -39,41 +40,42 @@ local doBattle = function(cardGroupOne, cardGroupTwo)
 	return retData
 end
 
--- ´¦ÀíÒ»´ÎÕ½ÒÛ
--- @param playerOne µÚÒ»¸öÍæ¼ÒµÄID
--- @param playerTwo µÚ¶ş¸öÍæ¼ÒµÄID
--- @return ·µ»ØÕ½ÒÛµÄ¶¯×÷ĞòÁĞÒÔ¼°Ê¤¸º
-local HandleBattle = function(playerOne, playerTwo)
-	-- 1. µÃµ½Íæ¼ÒÅÆ×éÊı¾İ
+--- å¤„ç†ä¸€æ¬¡æˆ˜å½¹
+-- @class function
+-- @param playerOne ç¬¬ä¸€ä¸ªç©å®¶çš„ID
+-- @param playerTwo ç¬¬äºŒä¸ªç©å®¶çš„ID
+-- @return è¿”å›æˆ˜å½¹çš„åŠ¨ä½œåºåˆ—ä»¥åŠèƒœè´Ÿ
+local function HandleBattle(playerOne, playerTwo)
+	-- 1. å¾—åˆ°ç©å®¶ç‰Œç»„æ•°æ®
 	local cardTotalPlayerOne = nil
 	local cardTotalPlayerTwo = nil
 	
-	-- 2. Í¨¹ıÍæ¼ÒµÄ×ÜÅÆÊı¾İËæ»ú³éÈ¡12ÕÅ¿¨ÅÆ×÷ÎªÅÆ¿â
+	-- 2. é€šè¿‡ç©å®¶çš„æ€»ç‰Œæ•°æ®éšæœºæŠ½å–12å¼ å¡ç‰Œä½œä¸ºç‰Œåº“
 	local cardLibPlayerOne = nil
 	local cardLibPlayerTwo = nil
 	
-	-- 3. ´ÓÅÆ¿âÖĞÑ¡ÔñÒ»¾ÖÓÎÏ·ÖĞµÄĞèÒªµÄÅÆ×é
-	--     ¿ÉÒÔÊÇ3×é£¬Ã¿×é3ÕÅ£¬»òÕßÊÇ1×é£¬Ò»×é3ÕÅ»òÕß6ÕÅ
+	-- 3. ä»ç‰Œåº“ä¸­é€‰æ‹©ä¸€å±€æ¸¸æˆä¸­çš„éœ€è¦çš„ç‰Œç»„
+	--     å¯ä»¥æ˜¯3ç»„ï¼Œæ¯ç»„3å¼ ï¼Œæˆ–è€…æ˜¯1ç»„ï¼Œä¸€ç»„3å¼ æˆ–è€…6å¼ 
 	local cardBattleGroupPlayerOne = nil
 	local cardBattleGroupPlayerTwo = nil
 	
-	-- 4. ¸ù¾İµ±Ç°µÄÅäÖÃ¾ö¶¨½øĞĞ¼¸´Î¶ÔÕ½
+	-- 4. æ ¹æ®å½“å‰çš„é…ç½®å†³å®šè¿›è¡Œå‡ æ¬¡å¯¹æˆ˜
 	local battleResult = doBattle(cardBattleGroupPlayerOne, cardBattleGroupPlayerTwo)
 	
-	-- 5. ·ÖÎö¶à³¡Õ½¶·£¬µÃ³öÊ¤ÀûµÄÍæ¼ÒID
+	-- 5. åˆ†æå¤šåœºæˆ˜æ–—ï¼Œå¾—å‡ºèƒœåˆ©çš„ç©å®¶ID
 	local winnerID = playerTwo.userID
 	if battleResult.bFirstWin then
 		winnerID = playerOne.userID
 	end
 	
-	-- 6. ¶Ô¶à´ÎÕ½ÒÛ´ò°ü·µ»Ø
+	-- 6. å¯¹å¤šæ¬¡æˆ˜å½¹æ‰“åŒ…è¿”å›
 	local retData = {
-		-- Õ½ÒÛ½á¹û
+		-- æˆ˜å½¹ç»“æœ
 		battleResult = {
-			-- Ê¤ÀûÕßID
+			-- èƒœåˆ©è€…ID
 			winnerID = 1000
 		},
-		-- Õ½¶·Êı¾İ£¬Êı×é
+		-- æˆ˜æ–—æ•°æ®ï¼Œæ•°ç»„
 		battleData = {
 			battleResult
 		}
