@@ -7,7 +7,6 @@ package.path = ".\\?.lua;" .. package.path
 require "comm"
 require "card"
 
-print(Card.CardPropertyClass:new())
 -- 按照各个角色的异能特性，整理异能
 
 --- 战斗函数
@@ -40,6 +39,9 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 	return retData
 end
 
+-- 得到卡牌堆
+local CardHeap = comm.readCardData("card_data.txt")
+
 --- 处理一次战役
 -- @class function
 -- @param playerOne 第一个玩家的ID
@@ -47,17 +49,24 @@ end
 -- @return 返回战役的动作序列以及胜负
 local function HandleBattle(playerOne, playerTwo)
 	-- 1. 得到玩家牌组数据
-	local cardTotalPlayerOne = nil
-	local cardTotalPlayerTwo = nil
+	local cardTotalPlayerOne = CardHeap
+	local cardTotalPlayerTwo = CardHeap
 	
 	-- 2. 通过玩家的总牌数据随机抽取12张卡牌作为牌库
-	local cardLibPlayerOne = nil
-	local cardLibPlayerTwo = nil
+	local cardLibPlayerOne = comm.chooseCardFromStore(cardTotalPlayerOne, 20)
+	local cardLibPlayerTwo = comm.chooseCardFromStore(cardTotalPlayerTwo, 20)
+	
+	local function pt(key, value)
+		print(key, value:getAddress(), value)
+	end
 	
 	-- 3. 从牌库中选择一局游戏中的需要的牌组
 	--     可以是3组，每组3张，或者是1组，一组3张或者6张
-	local cardBattleGroupPlayerOne = nil
-	local cardBattleGroupPlayerTwo = nil
+	local cardBattleGroupPlayerOne = comm.chooseActionCardGroupFromStore(cardLibPlayerOne, 1, 3)
+	local cardBattleGroupPlayerTwo = comm.chooseActionCardGroupFromStore(cardLibPlayerTwo, 2, 3)
+	
+	table.foreach(cardBattleGroupPlayerOne, pt)
+	table.foreach(cardBattleGroupPlayerTwo, pt)
 	
 	-- 4. 根据当前的配置决定进行几次对战
 	local battleResult = doBattle(cardBattleGroupPlayerOne, cardBattleGroupPlayerTwo)
@@ -83,3 +92,5 @@ local function HandleBattle(playerOne, playerTwo)
 	
 	return retData
 end
+
+HandleBattle({userID = 111}, {userID = 222});

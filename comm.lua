@@ -4,6 +4,8 @@
 -- @copyright Jason Tou
 module("comm", package.seeall)
 
+require "card"
+
 -- 速度属性，可以不显示影响，通过负重属性
 local prop_speed_tbl =
 {
@@ -99,7 +101,7 @@ readCardData = function(dataFileName)
 		while (card_data ~= nil) do
 --			print(card_data);
 			local card = {};
-			card.num, card.attack, card.hp, card.speed = string.match(card_data, "(%d+)%s(%d+)%s(%d+)%s(%d+)");
+			card.id, card.attack, card.hitPoint, card.speed = string.match(card_data, "(%d+)%s(%d+)%s(%d+)%s(%d+)");
 --			print(card.num, card.attack, card.hp, card.speed);
 
 			-- 增加胜利次数和战败次数
@@ -116,66 +118,161 @@ readCardData = function(dataFileName)
 	return card_heap;
 end
 
+--- 表格深层次拷贝，共享metatable
+-- @class function
+-- @param object 待拷贝的表
+-- @return 新拷贝的表
+_G.table.deepcopy = function (object)
+    local lookup_table = {}
+    local function _copy(object)
+        if type(object) ~= "table" then
+            return object
+        elseif lookup_table[object] then
+            return lookup_table[object]
+        end  -- if
+        local new_table = {}
+        lookup_table[object] = new_table
+        for index, value in pairs(object) do
+            new_table[_copy(index)] = _copy(value)
+        end  -- for
+        return setmetatable(new_table, getmetatable(object))
+    end  -- function _copy
+    return _copy(object)
+end  -- function deepcopy
+
+--- 表的浅拷贝
+_G.table.dup = function(ori_tab)
+    if (type(ori_tab) ~= "table") then
+        return nil;
+    end
+    local new_tab = {};
+    for i,v in pairs(ori_tab) do
+        local vtyp = type(v);
+        if (vtyp == "table") then
+            new_tab[i] = th_table_dup(v);
+        elseif (vtyp == "thread") then
+            -- TODO: dup or just point to?
+            new_tab[i] = v;
+        elseif (vtyp == "userdata") then
+            -- TODO: dup or just point to?
+            new_tab[i] = v;
+        else
+            new_tab[i] = v;
+        end
+    end
+    return new_tab;
+end
+
+--- 从选好的可出战牌库中选择当前局出战卡牌序列，简单的table
+-- @class function
+-- @param card_store 玩家所有用的牌库
+-- @param counts 组成牌库的数量
+chooseCardFromStore = function(card_store, counts)
+	counts = counts or 10	-- 至少10张组成牌库
+	
+	if not card_store then
+		return
+	end
+	
+	-- 牌库
+	local card_lib = {};
+	
+	local cn = {};
+	local cn_a = {} -- 辅助表，用来保存是否选中的标志
+	local maxRange = #card_store
+	
+	repeat
+		local num = genRand(maxRange, 1)
+		-- 只有不重复的ID卡牌才能入库
+		if not cn_a[num] then
+			table.insert(cn, num)
+			cn_a[num] = true
+		end
+	until #cn >= counts
+	
+	for idx, cardNum in ipairs(cn) do
+		-- 这里直接索引拷贝，不会修改内部值
+		local singleCard = card_store[cardNum];
+		if singleCard == nil then
+			error(string.format("cardNum is %d", cardNum));
+		end
+		
+		table.insert(card_lib, singleCard);
+	end
+	
+	return card_lib;
+	
+end
+
 --- 从牌库中获得N张卡牌
 -- @class function
 -- @param card_store 牌库
--- @param side 分组ID，一般是1和2，表示两个对立面
+-- @param side 分组ID，一般是1和2，表示两个对立面，也可以用户ID，主要是用来区分卡牌的归属
 -- @param counts 取几张卡牌，默认3张
 -- @return <code>array</code> 返回选好的卡组 @see Card.CardPropertyClass
-chooseCardFromStore = function(card_store, side, counts)
+chooseActionCardGroupFromStore = function(card_store, side, counts)
 
 	counts = counts or 3;
+	
+	if not card_store then
+		return
+	end
 --	print(#card_store);
 	
 	local battle_cards = {};
 	
 	local cn = {};
-	for i=1,counts do
-		table.insert(cn, genRand(#card_store, 1));
-	end
+	local cn_a = {} -- 辅助表，用来保存是否选中的标志
+	local maxRange = #card_store
+	repeat
+		local num = genRand(maxRange, 1)
+		-- 只有不重复的ID卡牌才能入库
+		if not cn_a[num] then
+			table.insert(cn, num)
+			cn_a[num] = true
+		end
+	until #cn >= counts
 	
 	for idx, cardNum in ipairs(cn) do
-		local cardData = {};
-		local cd = card_store[cardNum];
-		if cd == nil then
+		local singleCard = table.dup(card_store[cardNum]);
+		if singleCard == nil then
 			error(string.format("cardNum is %d", cardNum));
 		end
-		for k, v in pairs(cd) do
-			cardData[k] = tonumber(v);
-		end
 		
-		cardData.side = side;
-		--  插入选出的牌中
+		singleCard.side = side
+		local cardData = Card.CardPropertyClass:new(singleCard);
+		
 		table.insert(battle_cards, cardData);
 	end
 	
 	return battle_cards;
 end
 
---- 速度排序
+--- 速度排序。按照速度从大到小的顺序排序
+--  注意，这里的排序只是把卡牌对象直接放到一个新的序列中，不会生成新的对象
 -- @class function
 -- @param card_array 牌组数组，可以有多个牌组组成，几个牌组表示一个玩家
--- @return 把几个组的卡都组到一起
-speedSort = function(card_array)
+-- @return 返回一个卡牌行动序列表
+getActionSequence = function(card_array)
 
-	-- 合并牌，得到总体攻击顺序
-	local attack_sequence = {};
+	-- 合并牌，得到action_sequence总体行动顺序
+	local action_sequence = {};
 	
 	for idx, card_group in ipairs(card_array) do
 		
 		for k, v in ipairs(card_group) do
-			table.insert(attack_sequence, v)
+			table.insert(action_sequence, v)
 		end
 		
-	--	print("attack_sequence's count", #attack_sequence);
+	--	print("action_sequence's count", #action_sequence);
 	end
 	
 	-- 循环牌库，得到速度比值
-	table.sort(attack_sequence, function(one, two)
+	table.sort(action_sequence, function(one, two)
 		return one.speed > two.speed
 	end);
 	
-	return attack_sequence;
+	return action_sequence;
 end
 
 --- 普通攻击测试

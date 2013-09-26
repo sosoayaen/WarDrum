@@ -1,4 +1,4 @@
---- 异能模块，从属于卡牌模块的一个属性
+﻿--- 异能模块，从属于卡牌模块的一个属性
 -- @class module
 -- @author Jason Tou sosoayaen@gmail.com
 -- @copyright Jason Tou

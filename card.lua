@@ -38,6 +38,8 @@ CardPropertyClass = {
 	ablitys = {},
 	-- 组牌限制，牌组中可以拥有的数量
 	numberLimit = 3,
+	-- 附属属性
+	side = 0
 }
 
 --- 判断当前卡牌是否已经死亡
@@ -47,9 +49,21 @@ function CardPropertyClass:isDead()
 	return self.hitPoint <= 0
 end
 
+--- 获得对象的地址
+-- @class function
+-- @return 返回对象的类型和地址
+function CardPropertyClass:getAddress()
+	local mt = getmetatable(self)
+	local ts = mt.__tostring
+	mt.__tostring = nil
+	local ret = tostring(self)
+	mt.__tostring = ts
+	return ret
+end
+
 --- 创建一个卡牌对象，所有的卡牌都要通过此函数生成
 -- @class function
--- @param o 可传可不传，建议直接空
+-- @param o 设置对应初始属性表，会拷贝一份
 -- @return CardPropertyClass 返回卡牌实例
 function CardPropertyClass:new(o)
 	o = o or {}
@@ -59,11 +73,12 @@ function CardPropertyClass:new(o)
 	self.__index = self
 	
 	-- 不允许新增不存在的数据
-	self.__newindex = function(t, k) end
+	self.__newindex = function(t, k) print('can`t create new field') end
 	
 	self.__tostring = function(t)
 		local tbl = {}
-		table.foreach(self, function(key, value)
+		table.foreach(self, function(key, _)
+			local value = t[key]
 			local tps = type(value)
 			if tps == 'table' then
 				if key == 'ablity' then
@@ -80,4 +95,29 @@ function CardPropertyClass:new(o)
 	return o
 end
 
-return CardPropertyClass
+--- 获得卡牌原始数值，通常可以用作一些状态等的恢复或者原始数值的比对
+-- @class function
+-- @param key 键
+function CardPropertyClass:getOriginalValue(key)
+	return self[key]
+end
+
+--- 设置对象是否不能添加自定义成员
+-- @class function
+-- @param isAllow bool 变量
+function CardPropertyClass:setAllowNewField(isAllow)
+	local mt = getmetatable(self)
+	if isReadOnly then
+		mt.__newindex = function(t, k) end
+	else
+		mt.__newindex = nil
+	end
+end
+
+--- 判断当前对象是否可创建新成员<br><b>example:</b> Card.newfield = 0，如果不允许，则此类操作不会把newfield这个对象放到卡牌对象中
+-- @class function
+-- @return true or false
+function CardPropertyClass:isAllowNewField()
+	local mt = getmetatable(self)
+	return not mt.__newindex
+end
