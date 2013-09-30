@@ -4,6 +4,8 @@
 -- @copyright Jason Tou
 module("Card", package.seeall)
 
+require "util"
+
 --- 卡牌基类，定义了卡牌的一些基础属性
 -- @class table
 -- @name CardPropertyClass
@@ -49,7 +51,7 @@ function CardPropertyClass:isDead()
 	return self.hitPoint <= 0
 end
 
---- 获得对象的地址
+--- 获得对象的地址 Debug用
 -- @class function
 -- @return 返回对象的类型和地址
 function CardPropertyClass:getAddress()
@@ -61,12 +63,32 @@ function CardPropertyClass:getAddress()
 	return ret
 end
 
+--- 通过创建原始数据
+local function setMetaData(ot, o)
+	table.foreach(ot, function(k, v)
+		-- 暂时不拷贝函数
+		local tps = type(v)
+		
+		if tps == 'table' then
+			-- 拷贝表数据（只拷贝表内的数据）
+			local t = table.dup(v)
+			o[k] = t
+		elseif tps ~= 'function' then
+			-- 原样复制
+			o[k] = v
+		end
+	end)
+end
+
 --- 创建一个卡牌对象，所有的卡牌都要通过此函数生成
 -- @class function
 -- @param o 设置对应初始属性表，会拷贝一份
 -- @return CardPropertyClass 返回卡牌实例
 function CardPropertyClass:new(o)
 	o = o or {}
+	
+	-- 设置原始数据
+	setMetaData(o, self)
 	
 	setmetatable(o, self)
 	

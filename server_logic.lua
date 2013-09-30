@@ -56,17 +56,17 @@ local function HandleBattle(playerOne, playerTwo)
 	local cardLibPlayerOne = comm.chooseCardFromStore(cardTotalPlayerOne, 20)
 	local cardLibPlayerTwo = comm.chooseCardFromStore(cardTotalPlayerTwo, 20)
 	
-	local function pt(key, value)
-		print(key, value:getAddress(), value)
-	end
+-- 	local function pt(key, value)
+-- 		print(key, value:getAddress(), value)
+-- 	end
 	
 	-- 3. 从牌库中选择一局游戏中的需要的牌组
 	--     可以是3组，每组3张，或者是1组，一组3张或者6张
 	local cardBattleGroupPlayerOne = comm.chooseActionCardGroupFromStore(cardLibPlayerOne, 1, 3)
 	local cardBattleGroupPlayerTwo = comm.chooseActionCardGroupFromStore(cardLibPlayerTwo, 2, 3)
 	
-	table.foreach(cardBattleGroupPlayerOne, pt)
-	table.foreach(cardBattleGroupPlayerTwo, pt)
+	table.foreach(cardBattleGroupPlayerOne, print)
+	table.foreach(cardBattleGroupPlayerTwo, print)
 	
 	-- 4. 根据当前的配置决定进行几次对战
 	local battleResult = doBattle(cardBattleGroupPlayerOne, cardBattleGroupPlayerTwo)
