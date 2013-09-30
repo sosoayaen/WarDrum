@@ -1,8 +1,8 @@
-﻿--- 异能模块，从属于卡牌模块的一个属性
+--- 异能模块，从属于卡牌模块的一个属性
 -- @class module
 -- @author Jason Tou sosoayaen@gmail.com
 -- @copyright Jason Tou
-module("Ablity", package.seeall)
+module("Ability", package.seeall)
 
 local const_mt = {
 	-- 不允许中途修改值
@@ -13,7 +13,7 @@ local const_mt = {
 local bUseCache = true
 
 -- 内部使用的异能数据缓存，默认为空，然后从数据库中获取数据后缓存在内存中
-local ExceptionalAbilityCache = {}
+local AbilityCache = {}
 
 --- 静态变量的定义表
 -- @class table
@@ -86,7 +86,8 @@ CONSTANTS = {
 		-- 光环类
 		HOLO = 1,
 		-- 
-	}
+	},
+	
 	-- 异能选择目标单位类型策略
 	targetChooseTactics = {
 		-- 无效单位（保留）
@@ -128,7 +129,7 @@ setmetatable(CONSTANTS, const_mt)
 
 --- 异能属性基类
 -- @class table
--- @name ExceptionalAbilityClass
+-- @name AbilityClass
 -- @field id <vt>int</vt> 异能的ID，唯一
 -- @field keyWord <vt>string</vt> 异能关键字（暂时保留）
 -- @field description <vt>string</vt> 当前异能的描述
@@ -136,9 +137,11 @@ setmetatable(CONSTANTS, const_mt)
 -- @field property <vt>table</vt> 异能属性
 -- @field targetList <vt>table</vt> 异能影响的目标列表
 -- @see CONSTANTS
-local ExceptionalAbilityClass = {
+local AbilityClass = {
+	-- 类属性
+	className = "ABILITY",
 	-- 异能的ID
-	id = -1
+	id = -1,
 	
 	-- 技能关键字
 	keyWord = "null",
@@ -206,15 +209,15 @@ local ExceptionalAbilityClass = {
 --- 对象创建
 -- @class function
 -- @param o 可传可不传
--- @return 返回一个ExceptionalAbilityClass的实例
+-- @return 返回一个AbilityClass的实例
 -- @see CONSTANTS
-function ExceptionalAbilityClass:new(o)
+function AbilityClass:new(o)
 	o = o or {}
 	
 	-- 设置元表
 	setmetatable(o, self)
 	
-	-- 设置对应搜索路径为ExceptionalAbilityClass本身
+	-- 设置对应搜索路径为AbilityClass本身
 	-- 使实例拥有对应的成员函数和成员变量
 	self.__index = self
 	
@@ -229,21 +232,23 @@ end
 
 -- 从数据库中获取对应ID的技能数据
 -- TODO: 
-local getAbilityObjFromDataBase = function(db, nID)
-	return nil
+local getAbilityObjFromDataBase = function(nID)
+	local sqlTxt = string.format("select * from ability where id=%d", nID)
+	util.GetDataFromDB("WarDrum.s3db", sqlTxt)
 end
 
---- 通过技能ID得到对应的技能实体
+--- 通过技能ID得到对应的技能实体</br>
+-- 这个函数作为其他模块获得技能对象的入口
 -- @class function
 -- @param nID 技能的ID
--- @return <vt>ExceptionalAbility</vt> 得到技能对象
-function ExceptionalAbilityClass.GetAbilityObj(nID)
+-- @return <vt>Ability</vt> 得到技能对象
+function GetAbilityObj(nID)
 	
 	local abilityObj = nil
 	
 	if nID and nID >= 0 then
 		-- 先从缓存中获取，如果没有则从数据库中获取，并且把对应的对象加到缓存中
-		abilityObj = ExceptionalAbilityCache[nID]
+		abilityObj = AbilityCache[nID]
 		
 		if not abilityObj then
 		
@@ -251,7 +256,7 @@ function ExceptionalAbilityClass.GetAbilityObj(nID)
 			
 			if bUseCache and abilityObj then
 				-- 缓存数据
-				ExceptionalAbilityCache[nID] = abilityObj
+				AbilityCache[nID] = abilityObj
 			end
 		end
 	end
@@ -261,17 +266,13 @@ end
 
 --- 清理异能缓存数据
 -- @class function
-function ExceptionalAbilityClass.ClearCache()
-
-	ExceptionalAbilityCache = {}
-	
+function ClearCache()
+	AbilityCache = {}
 end
 
 --- 设置是否启用缓存
 -- @class function
 -- @param bEnable <vt>bool</vt> 启用标识
-function ExceptionalAbilityClass.EnableCache(bEnable)
-
+function EnableCache(bEnable)
 	bUseCache = bEnable
-	
 end

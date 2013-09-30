@@ -44,6 +44,7 @@ setmetatable(CONSTANTS, const_mt)
 -- @field Natural <vt>table</vt> 自然
 -- @field Mehanical <vt>table</vt> 机械
 RaceClass = {
+	className = "RACE",
 	-- 恶魔
 	Evil = {},
 	-- 不死

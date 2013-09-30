@@ -20,6 +20,8 @@ require "util"
 -- @field abilitys <vt>array</vt>异能，可以有多个，数组。属性详见异能列表 <a href=Ablity.html#ExceptionalAbilityClass>ExceptionalAbilityClass</a>
 -- @field numberLimit <vt>int</vt> 牌组限制，此卡牌可以在牌组中出现的次数
 CardPropertyClass = {
+	-- 类属性
+	className = "CARD",
 	-- 攻击力
 	attack = 0,
 	-- 攻击类型
@@ -63,24 +65,8 @@ function CardPropertyClass:getAddress()
 	return ret
 end
 
---- 通过创建原始数据
-local function setMetaData(ot, o)
-	table.foreach(ot, function(k, v)
-		-- 暂时不拷贝函数
-		local tps = type(v)
-		
-		if tps == 'table' then
-			-- 拷贝表数据（只拷贝表内的数据）
-			local t = table.dup(v)
-			o[k] = t
-		elseif tps ~= 'function' then
-			-- 原样复制
-			o[k] = v
-		end
-	end)
-end
-
---- 创建一个卡牌对象，所有的卡牌都要通过此函数生成
+--- 创建一个卡牌对象</br>
+-- 所有的卡牌都要通过此函数生成
 -- @class function
 -- @param o 设置对应初始属性表，会拷贝一份
 -- @return CardPropertyClass 返回卡牌实例
@@ -88,7 +74,7 @@ function CardPropertyClass:new(o)
 	o = o or {}
 	
 	-- 设置原始数据
-	setMetaData(o, self)
+	util.SetMetaData(o, self)
 	
 	setmetatable(o, self)
 	
