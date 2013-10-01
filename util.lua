@@ -30,7 +30,8 @@ local deepcopy = function (object)
 end  -- function deepcopy
 
 --- 表的浅拷贝
-local dup = function(ori_tab)
+local dup = nil
+dup = function(ori_tab)
     if (type(ori_tab) ~= "table") then
         return nil;
     end
@@ -105,6 +106,7 @@ function GetDataFromDB(dbName, sqlTxt)
 	local t = {}
 	repeat
 --		table.foreach(t, print)
+		-- 返回的表格按照key-value模式存储，key为列名
 		t = cur:fetch(t, 'a')
 		
 		if t then
@@ -263,4 +265,17 @@ function InitDBEnv()
 	if not dbEnv then
 		dbEnv = luasql.sqlite3()
 	end
+end
+
+-- 初始化随机种子
+math.randomseed(os.time());
+
+--- 得到随机数，最大和最小值设定
+-- @class function
+-- @param maxnum 不考虑基值的最大值
+-- @param baseNumber 基值，如不传，则默认为0
+-- @return 返回随机值
+genRand = function(maxnum, baseNumber)
+	baseNumber = baseNumber or 0;
+	return math.floor(math.random()*100000 % maxnum + baseNumber);
 end

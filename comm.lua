@@ -27,19 +27,6 @@ local prop_hitpoint_tbl =
 	maxium = 10
 }
 
--- 初始化随机种子
-math.randomseed(os.time());
-
---- 得到随机数，最大和最小值设定
--- @class function
--- @param maxnum 随机值的最大值
--- @param minium 随机值的最小值
--- @return 返回随机值
-genRand = function(maxnum, minium)
-	minium = minium or 0;
-	return math.floor(math.random()*100000 % maxnum + minium);
-end
-
 --- 生成随机牌库
 -- @class function
 -- @param total 生成的牌库数量
@@ -48,9 +35,9 @@ generate_card_heap = function(total)
 	local card_heap = {};
 	
 	for i = 1, total do
-		local speed = genRand(prop_speed_tbl.maxium, prop_speed_tbl.minum);
-		local attack = genRand(prop_attack_tbl.maxium, prop_attack_tbl.minium);
-		local hp = genRand(prop_hitpoint_tbl.maxium, prop_hitpoint_tbl.minium);
+		local speed = util.genRand(prop_speed_tbl.maxium, prop_speed_tbl.minum);
+		local attack = util.genRand(prop_attack_tbl.maxium, prop_attack_tbl.minium);
+		local hp = util.genRand(prop_hitpoint_tbl.maxium, prop_hitpoint_tbl.minium);
 		
 		local card_data =
 		{
@@ -139,7 +126,7 @@ chooseCardFromStore = function(card_store, counts)
 	local maxRange = #card_store
 	
 	repeat
-		local num = genRand(maxRange, 1)
+		local num = util.genRand(maxRange, 1)
 		-- 只有不重复的ID卡牌才能入库
 		if not cn_a[num] then
 			table.insert(cn, num)
@@ -182,7 +169,7 @@ chooseActionCardGroupFromStore = function(card_store, side, counts)
 	local cn_a = {} -- 辅助表，用来保存是否选中的标志
 	local maxRange = #card_store
 	repeat
-		local num = genRand(maxRange, 1)
+		local num = util.genRand(maxRange, 1)
 		-- 只有不重复的ID卡牌才能入库
 		if not cn_a[num] then
 			table.insert(cn, num)

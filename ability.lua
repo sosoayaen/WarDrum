@@ -4,6 +4,11 @@
 -- @copyright Jason Tou
 module("Ability", package.seeall)
 
+-- 这里定义了这个模块对应的数据库中的表名称
+DB_TABLE_NAME = "ability"
+
+require "util"
+
 local const_mt = {
 	-- 不允许中途修改值
 	__newindex = function(t, k, v) end
@@ -20,9 +25,37 @@ local AbilityCache = {}
 -- @name CONSTANTS
 -- @field LIMITLESS 表示无限响应
 -- @field answerWindow 异能响应窗口枚举
+-- <ul><li><b>WINDOW_INVALID</b>: 无效窗口，保留</li></ul>
+-- <ul><li><b>WINDOW_ROUND_START</b>: 回合开始</li></ul>
+-- <ul><li><b>WINDOW_ACTION_START</b>: 行动开始</li></ul>
+-- <ul><li><b>WINDOW_TARGET_CHOOSE</b>:  目标指定前</li></ul>
+-- <ul><li><b>WINDOW_TARGET_CHOOSE_AFTER</b>: 目标指定后</li></ul>
+-- <ul><li><b>WINDOW_ATTACK_BEFORE</b>: 目标指定时</li></ul>
+-- <ul><li><b>WINDOW_ATTACK_AFTER</b>: 攻击之后</li></ul>
+-- <ul><li><b>WINDOW_DEFEND_BEFORE</b>: 防御之前</li></ul>
+-- <ul><li><b>WINDOW_DEFEND_AFTER</b>: 防御之后</li></ul>
+-- <ul><li><b>WINDOW_ROUND_END</b>: 回合结束</li></ul>
+-- <ul><li><b>WINDOW_MATCH_END</b>: 局结束</li></ul>
+-- <ul><li><b>WINDOW_DEATH</b>: 死亡窗口</li></ul>
 -- @field influencePropertyTarget 异能作用（影响，效果）目标
+-- <ul><li><b>INVALIDE</b>: 无任何影响</li></ul>
+-- <ul><li><b>ATTACK</b>: 影响攻击力</li></ul>
+-- <ul><li><b>HP</b>: 影响血量</li></ul>
+-- <ul><li><b>SPEED</b>: 影响速度</li></ul>
 -- @field targetInfluenceRange 目标作用范围，全员、己方全员、敌方全员、全员任意单位（符合条件）、己方任意单位（符合条件）等
 -- @field targetChooseTactics 异能选择目标单位类型策略、条件，配合 targetInfluenceRange 属性
+-- <ul><li><b>INVALID</b>:无效单位（保留）</li></ul>
+-- <ul><li><b>ACTIVE_UNIT</b>:目前行动的单位</li></ul>
+-- <ul><li><b>DEFEND_UNIT</b>:目前防御的单位</li></ul>
+-- <ul><li><b>RACE_LIMIT</b>:种族限制</li></ul>
+-- <ul><li><b>ATTACK_TYPE_LIMIT</b>:攻击属性限制</li></ul>
+-- <ul><li><b>ATTACK_LIMIT</b>:攻击力限制</li></ul>
+-- <ul><li><b>SPEED_LIMIT</b>:速度限制</li></ul>
+-- <ul><li><b>HP_LIMIT</b>:血量限制</li></ul>
+-- <ul><li><b>CARD_NO_LIMIT</b>:特定卡牌</li></ul>
+-- <ul><li><b>UNIT_NUM_LIMIT</b>:在场盟军数量限制</li></ul>
+-- <ul><li><b>HP_SUMMATION</b>:血量合</li></ul>
+-- <ul><li><b>ATTACK_SUMMATION</b>:攻击力合</li></ul>
 -- @field targetChooseTacticsExt 异能选择额外判断，是否取反等
 CONSTANTS = {
 	-- 无限
@@ -146,6 +179,8 @@ local AbilityClass = {
 	-- 技能关键字
 	keyWord = "null",
 	
+	-- 技能名称
+	name = "",
 	-- 技能描述
 	description = "",
 	
@@ -214,6 +249,9 @@ local AbilityClass = {
 function AbilityClass:new(o)
 	o = o or {}
 	
+	-- 设置原数据拷贝
+	util.SetMetaData(o, self)
+	
 	-- 设置元表
 	setmetatable(o, self)
 	
@@ -222,19 +260,18 @@ function AbilityClass:new(o)
 	self.__index = self
 	
 	-- 重写其输出格式
-	self.__tostring = function(t)
-		
-	end
+-- 	self.__tostring = function(t)
+-- 		
+-- 	end
 	
 	-- 返回实例
 	return o
 end
 
 -- 从数据库中获取对应ID的技能数据
--- TODO: 
-local getAbilityObjFromDataBase = function(nID)
-	local sqlTxt = string.format("select * from ability where id=%d", nID)
-	util.GetDataFromDB("WarDrum.s3db", sqlTxt)
+local getAbilityTableFromDataBase = function(nID)
+	local sqlTxt = string.format("select * from %s where id=%d", DB_TABLE_NAME, nID)
+	return util.GetDataFromDB("DB/WarDrum.s3db", sqlTxt)
 end
 
 --- 通过技能ID得到对应的技能实体</br>
@@ -252,7 +289,9 @@ function GetAbilityObj(nID)
 		
 		if not abilityObj then
 		
-			abilityObj = getAbilityObjFromDataBase("", nID)
+			local result = getAbilityTableFromDataBase(nID)
+			
+			abilityObj = result[1]
 			
 			if bUseCache and abilityObj then
 				-- 缓存数据
@@ -261,7 +300,14 @@ function GetAbilityObj(nID)
 		end
 	end
 	
-	return abilityObj
+	if not abilityObj then
+		return nil
+	end
+	
+	-- 根据元数据创建一个异能对象
+	local ability = table.dup(abilityObj)
+	
+	return AbilityClass:new(ability)
 end
 
 --- 清理异能缓存数据
