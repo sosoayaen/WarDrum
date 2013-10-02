@@ -279,3 +279,4 @@ genRand = function(maxnum, baseNumber)
 	baseNumber = baseNumber or 0;
 	return math.floor(math.random()*100000 % maxnum + baseNumber);
 end
+

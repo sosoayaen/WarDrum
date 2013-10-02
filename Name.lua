@@ -404,6 +404,10 @@ local lastNameTbl =
 -- 前缀，绰号
 local prefix = 
 {
+	{en = 'brave', cn = '勇武的'},
+	{en = 'timid', cn = '胆小的'},
+	{en = 'powerful', cn = '强健的'},
+	{en = 'ornate', cn = '华丽的'},
 }
 
 -- 过滤数据并输出新的表格数据（lua源码格式）
@@ -428,6 +432,7 @@ local languageTbl =
 	['cn'] = true,	-- 中文简体
 	['en'] = true	-- 英文
 }
+
 --- 根据性别生成名字
 function GenerateNameByGender(gender, language)
 	local name = ""

@@ -56,6 +56,8 @@ CardPropertyClass = {
 	abilitys = '',
 	-- 组牌限制，牌组中可以拥有的数量
 	numberLimit = 3,
+	-- 死亡异能区域，在卡牌创建的时候生成
+	deathAbility = {},
 	-- 附属属性
 	side = 0
 }
@@ -153,6 +155,18 @@ function CardPropertyClass:isAllowNewField()
 	local mt = getmetatable(self)
 	return not mt.__newindex
 end
+
+--- 受伤
+-- @class function
+-- @param atk 攻击力
+function CardPropertyClass:getHurt(atk)
+	if self.hitPoint > 0 then
+		self.hitPoint = self.hitPoint - atk
+	else
+		print('Target is invalid!')
+	end
+end
+
 
 -- 从数据库中获取对应ID的技能数据
 local getCardTableFromDataBase = function(nID)

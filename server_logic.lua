@@ -7,27 +7,45 @@ package.path = ".\\?.lua;" .. package.path
 require "comm"
 require "card"
 
--- 死亡清算，独立的函数，在每个行动后都需要死亡结算
-local depositDeath = function(unit)
-	-- TODO: 查找该单位的死亡清算异能，可以是通过该单位的异能区结算，如果是死亡异能，则创建单位时就加入死亡异能区域
+-- 死亡结算
+-- 死亡结算并不是当一个单位血到0后立即发生，而是需要在行动方结束后进行
+-- 一般需要传入所有的单位进行轮询判断，某些特殊异能可以引发立即死亡结算，比如是会影响行动方的生命或者行动类
+-- 这里涉及到行动方是以单体为目标还是以多个单位为目标
+local depositeDeath = function(unit) -- 在每个行动后都需要死亡结算
 	-- 这里暂时不判断unit是否是卡牌，由外部调用保证
 	
 	-- 当单位死亡时，才进行结算
 	if not unit:isDead() then
 		return
 	end
+	
+	-- TODO: 根据异能描述实现对应的效果
+end
+
+-- 攻击结算，一般简单为攻击者的攻击力减去防御者的血
+local depositeAttack = function(attackUnit, defendUnit)
+	defendUnit:getHurt(attackUnit.attack)
+end
+
+-- 异能结算
+-- 异能结算是结算的一个大功能，因为异能多种多样，各自的效果也完全不同
+-- @class function
+-- @param ability 发动的异能（实例）
+-- @param controlUnit 施法单位
+-- @param affectedUnitArray 受影响的单位数组
+local depositeAbility = function(ability, controlUnit, affectedUnitArray)
+	
 end
 
 -- 清算函数辅助表
-local DepositTable =
+local Deposite =
 {
 	--  攻击清算函数
-	['attack'] = function(attackUnit, defendUnit)
-	end,
-	-- 异能清算
-	['ability'] = function(controlUnit, affectedUnitArray)
-	end,
-	
+	['attack'] = depositeAttack,
+	-- 异能清算（非死亡清算）
+	['ability'] = depositeAbility,
+	-- 死亡结算
+	['death'] = depositeDeath,
 }
 
 -- 游戏流程控制表
