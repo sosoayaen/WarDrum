@@ -342,3 +342,10 @@ end
 attackTest = function()
 
 end
+
+--- 获得对应阵营的单位数量
+-- @class function
+-- @param group 对应的组ID，游戏开始后得到的组ID，可以有viewID和chairID之分
+function GetGroupCount(group)
+	
+end
