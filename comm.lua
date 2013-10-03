@@ -343,9 +343,27 @@ attackTest = function()
 
 end
 
+--- 获得对应阵营的单位数组
+-- @class function
+-- @param groupID
+-- @param filter
+function GetUnitByGroupID(groupID, filter)
+	local retTbl = {}
+	
+	return retTbl
+end
+
 --- 获得对应阵营的单位数量
 -- @class function
--- @param group 对应的组ID，游戏开始后得到的组ID，可以有viewID和chairID之分
-function GetGroupCount(group)
+-- @param groupID 对应的组ID，游戏开始后得到的组ID，可以有viewID和chairID之分
+-- @param filter 过滤条件字符串，选项以分号分隔
+function GetUnitCountByGroupID(groupID, filter)
+	local ret = GetUnitByGroupID(groupID, filter)
 	
+	if ret and type(ret) == 'table' then
+		return #ret
+	else
+		return 0
+	end
 end
+

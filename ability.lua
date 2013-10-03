@@ -65,26 +65,30 @@ CONSTANTS = {
 	answerWindow = {
 		-- 无效窗口，保留
 		WINDOW_INVALID = 0,
+		-- 局开始
+		WINDOW_MATCH_START = 1,
 		-- 回合开始
-		WINDOW_ROUND_START = 1,
+		WINDOW_ROUND_START = 2,
 		-- 行动开始
-		WINDOW_ACTION_START = 2,
+		WINDOW_ACTION_START = 3,
 		-- 目标指定前
-		WINDOW_TARGET_CHOOSE = 3,
+		WINDOW_TARGET_CHOOSE = 4,
 		-- 目标指定时
-		WINDOW_TARGET_CHOOSE_AFTER = 4,
+		WINDOW_TARGET_CHOOSE_AFTER = 5,
 		-- 攻击之前
-		WINDOW_ATTACK_BEFORE = 5,
+		WINDOW_ATTACK_BEFORE = 6,
 		-- 攻击之后
-		WINDOW_ATTACK_AFTER = 6,
+		WINDOW_ATTACK_AFTER = 7,
 		-- 防御之前
-		WINDOW_DEFEND_BEFORE = 7,
+		WINDOW_DEFEND_BEFORE = 8,
 		-- 防御之后
-		WINDOW_DEFEND_AFTER = 8,
+		WINDOW_DEFEND_AFTER = 9,
+		-- 行动结束
+		WINDOW_ACTION_END = 10
 		-- 回合结束
-		WINDOW_ROUND_END = 9,
+		WINDOW_ROUND_END = 11,
 		-- 局结束
-		WINDOW_MATCH_END = 10,
+		WINDOW_MATCH_END = 12,
 		-- 死亡窗口
 		WINDOW_DEATH = 100
 	},
@@ -112,10 +116,15 @@ CONSTANTS = {
 		-- 己方全员
 		ALL_WE = 4,
 		-- 敌方全员
-		ALL_OPPONENT = 5
+		ALL_OPPONENT = 5,
+		-- 自己
+		ME = 6,
+		-- 己方全员非自己
+		ALL_WE_NOT_ME = 7,
 	},
 	-- 异能种类
 	types = {
+		UNKNOW = 0,
 		-- 光环类
 		HOLO = 1,
 		-- 
@@ -204,27 +213,39 @@ local AbilityClass = {
 		-- @see CONSTANTS.answerWindow
 		answerWindow = CONSTANTS.answerWindow.WINDOW_INVALID,
 		
-		-- 异能目标范围
-		-- 表明此异能的目标是全体还是单体，还有己方和敌方
-		-- @see CONSTANTS.targetInfluenceRange
-		targetInfluenceRange = CONSTANTS.targetInfluenceRange.ANY, -- 默认单体
+		-- 异能响应条件
+		answerCondition =
+		{
+			{
+				-- 异能目标范围
+				-- 表明此异能的目标是全体还是单体，还有己方和敌方
+				-- @see CONSTANTS.targetInfluenceRange
+				targetInfluenceRange = CONSTANTS.targetInfluenceRange.ANY, -- 默认单体
+				
+				-- 异能作用属性
+				-- 表明此异能会改变的属性，目前无非 『攻击力』、『速度』、『血量』
+				-- @see CONSTANTS.influencePropertyTarget
+				influenceType = CONSTANTS.influencePropertyTarget.ATTACK,
+				
+				-- 异能影响的数值
+				-- 表明此异能发动后，根据influenceType属性来结算效果值，值有正负之分，直接累加结算
+				-- @example 1. influenceType == CONSTANTS.influencePropertyTarget.ATTACK
+				--               2. influenceValue == 1
+				--               3. action.answerWindow == CONSTANTS.answerWindow.WINDOW_ATTACK_BEFORE
+				--               4. targetInfluenceRange == CONSTANTS.targetInfluenceRange.ALL_WE
+				--               5. influenceResponseCount = 1
+				--               7. liquidateRemoveAbility = true
+				--               8. persistentHostUnit = -1 表示无需施法单位
+				--               这表示在行动攻击前的窗口结算，在攻击前给己方所有单位增加1点攻击力BUFF，结算后取消
+				influenceValue = 1,
+			},
+		},
 		
-		-- 异能作用属性
-		-- 表明此异能会改变的属性，目前无非 『攻击力』、『速度』、『血量』
-		-- @see CONSTANTS.influencePropertyTarget
-		influenceType = CONSTANTS.influencePropertyTarget.ATTACK,
-		
-		-- 异能影响的数值
-		-- 表明此异能发动后，根据influenceType属性来结算效果值，值有正负之分，直接累加结算
-		-- @example 1. influenceType == CONSTANTS.influencePropertyTarget.ATTACK
-		--               2. influenceValue == 1
-		--               3. action.answerWindow == CONSTANTS.answerWindow.WINDOW_ATTACK_BEFORE
-		--               4. targetInfluenceRange == CONSTANTS.targetInfluenceRange.ALL_WE
-		--               5. influenceResponseCount = 1
-		--               7. liquidateRemoveAbility = true
-		--               8. persistentHostUnit = -1 表示无需施法单位
-		--               这表示在行动攻击前的窗口结算，在攻击前给己方所有单位增加1点攻击力BUFF，结算后取消
-		influenceValue = 1,
+		-- 异能作用效果
+		effect =
+		{
+			
+		},
 		
 		-- 异能响应次数，-1表示无限响应
 		influenceResponseCount = 1,

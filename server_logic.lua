@@ -96,6 +96,7 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 			-- 如果不是卡牌，则直接退出
 			return
 		end
+		
 		local abilityArray = unit.ability
 		-- 判断下当前卡牌是否拥有异能
 		if abilityArray and type(abilityArray) == 'table' then
