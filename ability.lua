@@ -42,15 +42,15 @@ local AbilityClass = {
 	className = "ABILITY",
 	-- 异能的ID
 	id = -1,
-	
+
 	-- 技能关键字
 	keyWord = "null",
-	
+
 	-- 技能名称
 	name = "",
 	-- 技能描述
 	description = "",
-	
+
 	-- 响应属性，运行时生成数据，提供变量的存储
 	-- @runtime
 	action = {
@@ -66,11 +66,11 @@ local AbilityClass = {
 --	property = {
 
 		-- 异能种类
-		type = CONSTANTS.types.UNKNOW,
+		type = CONSTANTS.ABILITY_TYPES.UNKNOW,
 		-- 响应时机
 		-- @see CONSTANTS.answerWindow
-		answerWindow = CONSTANTS.answerWindow.WINDOW_INVALID,
-		
+		answerWindow = CONSTANTS.ANSWER_WINDOW.WINDOW_INVALID,
+
 		-- 异能响应条件
 		answerCondition =
 		{
@@ -78,13 +78,13 @@ local AbilityClass = {
 				-- 异能目标范围
 				-- 表明此异能的目标是全体还是单体，还有己方和敌方
 				-- @see CONSTANTS.targetInfluenceRange
-				targetInfluenceRange = CONSTANTS.targetInfluenceRange.ANY, -- 默认单体
-				
+				targetInfluenceRange = CONSTANTS.TAEGET_ANY, -- 默认单体
+
 				-- 异能作用属性
 				-- 表明此异能会改变的属性，目前无非 『攻击力』、『速度』、『血量』
 				-- @see CONSTANTS.influencePropertyTarget
-				influenceType = CONSTANTS.influencePropertyTarget.ATTACK,
-				
+				influenceType = CONSTANTS.ABILITY_INFLUENCE_PROPERTY_TARGET.ATTACK,
+
 				-- 异能影响的数值
 				-- 表明此异能发动后，根据influenceType属性来结算效果值，值有正负之分，直接累加结算
 				-- @example 1. influenceType == CONSTANTS.influencePropertyTarget.ATTACK
@@ -96,8 +96,11 @@ local AbilityClass = {
 				--               8. persistentHostUnit = -1 表示无需施法单位
 				--               这表示在行动攻击前的窗口结算，在攻击前给己方所有单位增加1点攻击力BUFF，结算后取消
 				influenceValue = 1,
+
+				-- 条件标准，表示是大于、小于、等于
+				judgeStandard = CONSTANTS.JUDGE_STANDARD.GT,
 			},
---		},
+		},
 
 		-- 异能作用效果
 		effect =
@@ -106,25 +109,25 @@ local AbilityClass = {
 				-- 效果作用类型，目前仅有状态效果、属性效果
 				-- 状态效果等同于增加一个异能，而属性则为在三围上有效果
 				effectType = CONSTANTS.EFFECT_TYPE_PROPERTY,
-				
-				targetInfluenceRange = CONSTANTS.targetInfluenceRange.ME,
-				
+
+				targetInfluenceRange = CONSTANTS.TARGET_ME,
+
 				influenceType = CONSTANTS.EFFECT_ATTACK,
-				
+
 				influenceValue = 1,
 			}
 		},
-		
+
 		-- 异能响应次数，-1表示无限响应
 		influenceResponseCount = 1,
-		
+
 		-- 异能是否需要持续施法单位 -1 表示无需施法单位
 		persistentHostUnit = -1,
-		
+
 		-- 是否发动后直接取消（在清算、结算阶段移除此技能）
 		liquidateRemoveAbility = true,
-	},
-	
+--	},
+
 	-- 异能起效对象列表，标记受该技能影响的单位（待定）
 	-- @runtime
 	targetList = {},
@@ -137,22 +140,22 @@ local AbilityClass = {
 -- @see CONSTANTS
 function AbilityClass:new(o)
 	o = o or {}
-	
+
 	-- 设置原数据拷贝
 	util.SetMetaData(o, self)
-	
+
 	-- 设置元表
 	setmetatable(o, self)
-	
+
 	-- 设置对应搜索路径为AbilityClass本身
 	-- 使实例拥有对应的成员函数和成员变量
 	self.__index = self
-	
+
 	-- 重写其输出格式
 -- 	self.__tostring = function(t)
--- 		
+--
 -- 	end
-	
+
 	-- 返回实例
 	return o
 end
@@ -169,33 +172,33 @@ end
 -- @param nID 技能的ID
 -- @return <vt>Ability</vt> 得到技能对象
 function GetAbilityObj(nID)
-	
+
 	local abilityObj = nil
-	
+
 	if nID and nID >= 0 then
 		-- 先从缓存中获取，如果没有则从数据库中获取，并且把对应的对象加到缓存中
 		abilityObj = AbilityCache[nID]
-		
+
 		if not abilityObj then
-		
+
 			local result = getAbilityTableFromDataBase(nID)
-			
+
 			abilityObj = result[1]
-			
+
 			if bUseCache and abilityObj then
 				-- 缓存数据
 				AbilityCache[nID] = abilityObj
 			end
 		end
 	end
-	
+
 	if not abilityObj then
 		return nil
 	end
-	
+
 	-- 根据元数据创建一个异能对象
 	local ability = table.dup(abilityObj)
-	
+
 	return AbilityClass:new(ability)
 end
 

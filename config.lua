@@ -43,9 +43,9 @@ module("Config", package.seeall)
 CONSTANTS = {
 	-- 无限
 	LIMITLESS = -1,
-	
+
 	-- 异能响应窗口
-	ABILITY_ANSWER_WINDOW = {
+	ANSWER_WINDOW = {
 		-- 无效窗口，保留
 		WINDOW_INVALID = 0,
 		-- 局开始
@@ -67,7 +67,7 @@ CONSTANTS = {
 		-- 防御之后
 		WINDOW_DEFEND_AFTER = 9,
 		-- 行动结束
-		WINDOW_ACTION_END = 10
+		WINDOW_ACTION_END = 10,
 		-- 回合结束
 		WINDOW_ROUND_END = 11,
 		-- 局结束
@@ -87,32 +87,31 @@ CONSTANTS = {
 		SPEED = 3
 	},
 	-- 异能影响的单位范围，全员和单体
-	ABILITY_TARGET_INFLUENCE_RANGE = {
+	-- ABILITY_TARGET_INFLUENCE_RANGE = {
 		-- 全场单位
-		ALL = 1,
+		TARGET_ALL = 1,
 		-- 任意单体
-		ANY = 2,
+		TARGET_ANY = 2,
 		-- 己方任意单体效果
-		ANY_WE = 3,
+		TARGET_ANY_WE = 3,
 		-- 敌方任意单体
-		ANY_OPPONENT = 4,
+		TARGET_ANY_OPPONENT = 4,
 		-- 己方全员
-		ALL_WE = 5,
+		TARGET_ALL_WE = 5,
 		-- 敌方全员
-		ALL_OPPONENT = 6,
+		TARGET_ALL_OPPONENT = 6,
 		-- 自己
-		ME = 7,
+		TARGET_ME = 7,
 		-- 己方全员非自己
-		ALL_WE_NOT_ME = 8,
-	},
+		TARGET_ALL_WE_NOT_ME = 8,
+--	},
 	-- 异能种类
 	ABILITY_TYPES = {
 		UNKNOW = 0,
 		-- 光环类
 		HOLO = 1,
-		-- 
+		--
 	},
-	
 	-- 异能选择目标单位类型策略
 	ABILITY_TARGET_CHOOSE_TACTICS = {
 		-- 无效单位（保留）
@@ -140,12 +139,42 @@ CONSTANTS = {
 		-- 攻击力合
 		ATTACK_SUMMATION = 11,
 	},
-	
 	-- 异能选择额外判断，是否取反等
 	ABILITY_TARGET_CHOOSE_TACTICS_EXT = {
 		-- 默认值
 		NORMAL_FLAG = 0,
 		-- 取反
 		NOT_FLAG = 1,
-	}
+	},
+
+	-- 条件判断标准
+	JUDGE_STANDARD =
+	{
+		-- 等于
+		EQUALL = 1,
+		-- 大于
+		GREAT_THAN = 2,
+		-- 大于等于
+		GREAT_THAN_OR_EQUALL = 3,
+		-- 小于
+		LESS_THAN = 4,
+		-- 小于等于
+		LESS_THAN_OR_EQUALL = 5,
+	},
+	
+	-- 异能作用相关宏定义
+	-- 攻击力
+	EFFECT_ATTACK = 1,
+	-- 血量
+	EFFECT_HITPOINT = 2,
+	-- 速度
+	EFFECT_SPEED = 3,
+	
+	-- 异能作用的状态类型
+	-- 异能作用于属性效果，如攻击力等
+	EFFECT_TYPE_PROPERTY = 1,
+	-- 异能作用于异能状态，相当于异能起效后给对应的目标增加异能
+	EFFECT_TYPE_ABILITY = 2,
+	
+	
 }
