@@ -183,7 +183,7 @@ chooseActionCardGroupFromStore = function(card_store, side, counts)
 			error(string.format("cardNum is %d", cardNum));
 		end
 		
-		singleCard.side = side
+		singleCard.groupID = side
 		local cardData = Card.CardPropertyClass:new(singleCard);
 		
 		table.insert(battle_cards, cardData);
@@ -236,9 +236,9 @@ attackNormalTest = function(card1, card2, card_store)
 	local nTotalHP2 = 0;
 	for idx = 1, 6 do
 		local card = sequence[idx];
-		if card.side == 1 then
+		if card.groupID == 1 then
 			nTotalHP1 = nTotalHP1 + card.hp;
-		elseif card.side == 2 then
+		elseif card.groupID == 2 then
 			nTotalHP2 = nTotalHP2 + card.hp;
 		end
 	end
@@ -254,7 +254,7 @@ attackNormalTest = function(card1, card2, card_store)
 		-- 攻击方
 		local cardAttacker = sequence[idx];
 		-- 阵营
-		local sideAttack = cardAttacker.side;
+		local sideAttack = cardAttacker.groupID;
 		if cardAttacker.hp > 0 then	-- 活着攻击方的单位
 			--[[ 战斗中，攻击方随机挑选地方单位攻击策略
 				使用随机选择敌方来攻击的算法
@@ -275,7 +275,7 @@ attackNormalTest = function(card1, card2, card_store)
 			-- 最多循环3次（防守队列的长度），只要攻击到一个即刻结束
 			for idxDefender, cardDefender in ipairs(defenderSequence) do
 				
-				assert(cardDefender.side ~= sideAttack, "Defender side wrong")
+				assert(cardDefender.groupID ~= sideAttack, "Defender side wrong")
 
 				-- 判断防守方是否存活，如果死亡则选择下一个防守方
 				if cardDefender.hp > 0 then
@@ -294,9 +294,9 @@ attackNormalTest = function(card1, card2, card_store)
 					cardDefender.hp = cardDefender.hp - cardAttacker.attack
 					
 					-- 防守方团队扣血
-					if cardDefender.side == 1 then
+					if cardDefender.groupID == 1 then
 						nTotalHP1 = nTotalHP1 - deltaBlood
-					elseif cardDefender.side == 2 then
+					elseif cardDefender.groupID == 2 then
 						nTotalHP2 = nTotalHP2 - deltaBlood
 					end
 					

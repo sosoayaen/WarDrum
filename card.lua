@@ -25,6 +25,7 @@ local CardCache = {}
 -- @field rare <vt>int</vt> 卡牌的稀有度 @see Rare
 -- @field abilitys <vt>array</vt>异能，可以有多个，数组。属性详见异能列表 <a href=Ability.html#AbilityClass>AbilityClass</a>
 -- @field numberLimit <vt>int</vt> 牌组限制，此卡牌可以在牌组中出现的次数
+-- @field deathAbility 死亡结算异能数组
 CardPropertyClass = {
 	-- 类属性
 	className = "CARD",
@@ -58,8 +59,8 @@ CardPropertyClass = {
 	numberLimit = 3,
 	-- 死亡异能区域，在卡牌创建的时候生成
 	deathAbility = {},
-	-- 附属属性
-	side = 0
+	-- 分组（阵营）ID
+	groupID = 0
 }
 
 --- 判断当前卡牌是否已经死亡
@@ -79,6 +80,13 @@ function CardPropertyClass:getAddress()
 	local ret = tostring(self)
 	mt.__tostring = ts
 	return ret
+end
+
+--- 获取死亡结算异能数组
+-- @class function
+-- @return 返回数组或者空
+function CardPropertyClass:getDeathAbilityArray()
+	return self.deathAbility
 end
 
 --- 创建一个卡牌对象</br>

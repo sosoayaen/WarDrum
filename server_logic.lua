@@ -3,15 +3,78 @@
 	小写字母开头的函数表示本地函数，大写的函数表示全局函数
 ]]
 package.path = ".\\?.lua;" .. package.path
-
+require "config"
 require "comm"
 require "card"
+
+local CONSTANTS = Config.CONSTANTS
+
+-- 异能是否满足发动条件
+local isAbilityValid()
+	
+end
+
+-- 得到目标对象的辅助表
+local targetAssistTable =
+{
+	[CONSTANTS.ABILITY_TARGET_INFLUENCE_RANGE.ALL] = function() end,
+	[CONSTANTS.ABILITY_TARGET_INFLUENCE_RANGE.ANY] = function() end,
+}
+-- 异能结算
+-- 异能结算是结算的一个大功能，因为异能多种多样，各自的效果也完全不同
+-- @class function
+-- @param ability 发动的异能（实例）
+-- @param controlUnit 施法单位
+-- @param totalUnitArray 所有参战单位
+local depositeAbility = function(ability, controlUnit, totalUnitArray)
+	-- TODO: 根据异能的响应条件挑选可响应的单位，这里的分组信息可以优化到战斗流程中维护独立的链表，避免每次生成的浪费
+	
+	-- TODO: 判断当前异能是否发动（有可能开始就不能发动此异能的情况存在，如某些异能指明某异能不能发动）
+	if ability.invalid then
+		return
+	end
+	
+	-- 敌方单位数组
+	local enemyUnitArray = {}	
+	-- 己方单位数组
+	local selfUnitArray = {}
+	
+	-- 循环分组
+	local groupID = controlUnit.groupID
+	table.foreach(totalUnitArray, function(_, unit)
+		if unit.groupID == groupID then
+			table.insert(selfUnitArray, unit)
+		else
+			table.insert(enemyUnitArray, unit)
+		end
+	end)
+	
+	-- 得到条件判断的目标单位
+	local conditionTargetUnit = nil
+	-- 判断异能的发动条件是否满足（目前仅支持一种条件，所以只取第一个）
+	local condition = ability.answerCondition[1]
+	-- 得到对应获取目标对象的函数
+	local getTargetFunction = targetAssistTable[condition.targetInfluenceRange]
+	
+	if type(getTargetFunction) == 'function' then
+		-- 通过函数调用获取目标对象（数组）
+		conditionTargetUnit = getTargetFunction()
+	end
+	
+	if type(conditionTargetUnit) == 'table' then
+		if conditionTargetUnit.className == 'CARD' then
+			-- 表示是单个目标
+		else
+			-- 表示多个目标
+		end
+	end
+end
 
 -- 死亡结算
 -- 死亡结算并不是当一个单位血到0后立即发生，而是需要在行动方结束后进行
 -- 一般需要传入所有的单位进行轮询判断，某些特殊异能可以引发立即死亡结算，比如是会影响行动方的生命或者行动类
 -- 这里涉及到行动方是以单体为目标还是以多个单位为目标
-local depositeDeath = function(unit) -- 在每个行动后都需要死亡结算
+local depositeDeath = function(unit, totalUnit) -- 在每个行动后都需要死亡结算
 	-- 这里暂时不判断unit是否是卡牌，由外部调用保证
 	
 	-- 当单位死亡时，才进行结算
@@ -19,22 +82,21 @@ local depositeDeath = function(unit) -- 在每个行动后都需要死亡结算
 		return
 	end
 	
-	-- TODO: 根据异能描述实现对应的效果
+	-- 得到死亡结算异能
+	local deathAbilityArray = unit:getDeathAbilityArray()
+	
+	if deathAbilityArray then
+		for _, deathAbility in ipairs(deathAbilityArray) do
+			print(string.format("Card [%s]'s death Ability [%s] start...", unit.name, deathAbility.name))
+			-- 结算异能
+			depositeAbility(deathAbility, unit, totalUnit)
+		end
+	end
 end
 
 -- 攻击结算，一般简单为攻击者的攻击力减去防御者的血
 local depositeAttack = function(attackUnit, defendUnit)
 	defendUnit:getHurt(attackUnit.attack)
-end
-
--- 异能结算
--- 异能结算是结算的一个大功能，因为异能多种多样，各自的效果也完全不同
--- @class function
--- @param ability 发动的异能（实例）
--- @param controlUnit 施法单位
--- @param affectedUnitArray 受影响的单位数组
-local depositeAbility = function(ability, controlUnit, affectedUnitArray)
-	
 end
 
 -- 清算函数辅助表
@@ -55,11 +117,11 @@ local GameLogicTable =
 	flow =
 	{
 		-- 局开始
-		{},
+		{window = Card.CONSTANTS.answerWindow.WINDOW_MATCH_START},
 		-- 循环流程
-		{
+		{	
 			-- 回合开始
-			{},
+			{window = 1},
 			-- 行动开始
 			{},
 			-- 指定阶段
@@ -70,7 +132,7 @@ local GameLogicTable =
 			{},
 		},
 		-- 局结束
-		{},
+		{window = Card.CONSTANTS.answerWindow.WINDOW_MATCH_END},
 	}, 
 }
 
