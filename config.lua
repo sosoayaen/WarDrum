@@ -82,7 +82,7 @@ CONSTANTS = {
 		-- 影响攻击力
 		ATTACK = 1,
 		-- 影响血量
-		HP = 2,
+		HITPOINT = 2,
 		-- 影响速度
 		SPEED = 3
 	},

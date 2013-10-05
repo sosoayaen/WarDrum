@@ -9,11 +9,46 @@ require "card"
 
 local CONSTANTS = Config.CONSTANTS
 
+-- 异能响应总表
+local answerWindowAssistTable =
+{
+	-- 局开始
+	[CONSTANTS.ANSWER_WINDOW.WINDOW_MATCH_START] = {},
+	-- 回合开始
+	[CONSTANTS.ANSWER_WINDOW.WINDOW_ROUND_START] = {},
+	-- 行动开始
+	[CONSTANTS.ANSWER_WINDOW.WINDOW_ACTION_START] = {},
+	-- 目标指定前
+	[CONSTANTS.ANSWER_WINDOW.WINDOW_TARGET_CHOOSE] = {},
+	-- 目标指定时
+	[CONSTANTS.ANSWER_WINDOW.WINDOW_TARGET_CHOOSE_AFTER] = {},
+	-- 攻击之前
+	[CONSTANTS.ANSWER_WINDOW.WINDOW_ATTACK_BEFORE] = {},
+	-- 攻击之后
+	[CONSTANTS.ANSWER_WINDOW.WINDOW_ATTACK_AFTER] = {},
+	-- 防御之前
+	[CONSTANTS.ANSWER_WINDOW.WINDOW_DEFEND_BEFORE] = {},
+	-- 防御之后
+	[CONSTANTS.ANSWER_WINDOW.WINDOW_DEFEND_AFTER] = {},
+	-- 行动结束
+	[CONSTANTS.ANSWER_WINDOW.WINDOW_ACTION_END] = {},
+	-- 回合结束
+	[CONSTANTS.ANSWER_WINDOW.WINDOW_ROUND_END] = {},
+	-- 局结束
+	[CONSTANTS.ANSWER_WINDOW.WINDOW_MATCH_END] = {},
+}
+
 -- 得到目标对象的辅助表
 local targetAssistTable =
 {
-	[CONSTANTS.TARGET_ALL] = function() end,
-	[CONSTANTS.TARGET_ANY] = function() end,
+	[CONSTANTS.TARGET_ALL] = function(totalUnitArray, selfGroupID) end,
+	[CONSTANTS.TARGET_ANY] = function(totalUnitArray, selfGroupID) end,
+	[CONSTANTS.TARGET_ANY_WE] = function(totalUnitArray, selfGroupID) end,
+	[CONSTANTS.TARGET_ANY_OPPONENT] = function(totalUnitArray, selfGroupID) end,
+	[CONSTANTS.TARGET_ALL_WE] = function(totalUnitArray, selfGroupID) end,
+	[CONSTANTS.TARGET_ALL_OPPONENT] = function(totalUnitArray, selfGroupID) end,
+	[CONSTANTS.TARGET_ME] = function(totalUnitArray, selfGroupID) end,
+	[CONSTANTS.TARGET_ALL_WE_NOT_ME] = function(totalUnitArray, selfGroupID) end,
 }
 
 -- 得到目标的对象的比对属性函数辅助表
@@ -50,6 +85,25 @@ local conditionCompareAssistTable =
 	[CONSTANTS.JUDGE_STANDARD.LESS_THAN_OR_EQUALL] = function(a, b) return a <= b end,
 	-- a包含b
 }
+
+local propertyAssistTable =
+{
+	[1] = 'attack',
+	[2] = 'hitPoint',
+	[3] = 'speed',
+}
+
+-- 对属性修改的函数
+local doAbilityEffect = function(target, effect)
+	-- 得到影响的属性
+	local property = propertyAssistTable[effect.influenceType]
+	local value = effect.influenceValue
+	
+	if property then
+		print(string.format("异能起效，异能[%s], 修正值[%d]", property, value))
+		target[property] = target[property] + value
+	end
+end
 
 -- 异能结算
 -- 异能结算是结算的一个大功能，因为异能多种多样，各自的效果也完全不同
@@ -126,10 +180,24 @@ local depositeAbility = function(ability, controlUnit, totalUnitArray)
 	end
 
 	-- 4.发动异能效果
-	-- 得到异能作用目标
-	local target = nil
-	-- 得到目标获取函数
-	local getAbilityTargetFunction = 
+		
+	-- 异能作用数据
+	local abilityEffect = ability.effect
+	table.foreach(abilityEffect, function(_, effect)
+		-- 得到异能作用目标获取函数
+		local getAbilityTargetFunction = targetAssistTable(effect.targetInfluenceRange)
+		
+		local target = getAbilityTargetFunction(totalUnitArray, controlUnit.groupID)
+		
+		if effect.effectType == CONSTANTS.EFFECT_TYPE_PROPERTY then
+			-- 对属性的影响
+			doAbilityEffect(target, effect) 
+		elseif effect.effectType == CONSTANTS.EFFECT_TYPE_ABILITY then
+			-- 异能影响的，暂未实现
+		end
+		
+	end)
+	
 end
 
 -- 死亡结算
@@ -198,6 +266,52 @@ local GameLogicTable =
 	},
 }
 
+-- 发动异能
+local triggerAbility = function(ability)
+	assert(ability.className == 'ABILITY', 'triggerAbility failed')
+	-- 把当前异能按响应属性增加到对应列表中
+	local answerWindowTable = answerWindowAssistTable[ability.answerWindow]
+	if answerWindowAssistTable then
+		-- 把异能加入窗口响应表
+		table.insert(answerWindowTable, ability)
+	end
+end
+
+-- 判断比赛是否结束
+local isMatchOver = function(aliveTbl)
+	local aliveCount = 0
+	table.foreach(aliveTbl, function(_, count)
+		if count > 0 then
+			aliveCount = aliveCount + 1
+		end
+	end)
+	
+	return aliveCount == 1
+end
+
+-- 在两组数据中得到速度最快的
+local getActionUnit(round, cardOne, cardTwo)
+	-- 根据当前的回合，得到速度最快的单位并返回
+	
+	-- 得到第一组最快的
+	local actionSequence = comm.getActionSequence(cardOne, cardTwo)
+	
+	-- 得到A组第一个速度最快，并且round小于当前round的单位
+	local unit = nil
+	table.foreachi(actionSequence, function(_, card)
+		if card.round < round then
+			unit = card
+			break
+		end
+	end)
+	
+	if not unit then
+		unit = actionSequence[1]
+	end
+	
+	return unit
+end
+
 -- 战斗函数
 -- @class function
 -- @param cardGroupOne 玩家1选取好的卡组
@@ -228,7 +342,8 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 				-- 通过异能的ID得到异能对象
 				local ability = Ability.GetAbilityObj(abilityID)
 				if ability then
-
+					-- 把当前异能加入窗口响应列表
+					triggerAbility(ability)
 				end
 			end)
 		end
@@ -241,10 +356,22 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 	--//////////////////////
 	-- 进场阶段
 	-- 1. 进场技能结算，把所有单位的技能发动，技能的发动按照其响应阶段决定
-
-
-	-- 2.
-
+	
+	local aliveTable = {}
+	--  得到每一方存活数量
+	table.foreach(actionSequences, function(_, unit)
+		aliveTable[unit.groupID] = (aliveTable[unit.groupID] or 0) + 1
+	end)
+	
+	-- 当前回合
+	local nRound = 1
+	
+	while(not isMatchOver(aliveTable)) do
+		-- 根据速度优先值行动
+		getActionUnit(nRound, cardGroupOne, cardGroupTwo)
+		
+	end
+	
 	-- retData.sequences = actionSequences;
 
 	return retData
