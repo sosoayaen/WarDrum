@@ -107,6 +107,30 @@ readCardData = function(dataFileName)
 	return card_heap;
 end
 
+--- 从数据库中获取卡牌
+-- @class function
+readCardDataFromDB = function()
+
+	local card_heap, typesTbl, err = util.GetDataFromDB('DB/WarDrum.s3db', 'select * from card')
+	assert(card_heap, err)
+	
+	-- 设置原数据的类型，不都是string型的
+	
+	table.foreachi(card_heap, function(_, rowData)
+		table.foreach(typesTbl, function(key, value)
+			local bNumber = false
+			if value == 'int' then
+				bNumber = true
+			end
+			if bNumber then
+				rowData[key] = tonumber(rowData[key])
+			end
+		end)
+	end)
+	
+	return card_heap
+end
+
 --- 从选好的可出战牌库中选择当前局出战卡牌序列，简单的table
 -- @class function
 -- @param card_store 玩家所有用的牌库

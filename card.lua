@@ -60,14 +60,16 @@ CardPropertyClass = {
 	-- 死亡异能区域，在卡牌创建的时候生成
 	deathAbility = {},
 	-- 分组（阵营）ID
-	groupID = 0
+	groupID = 0,
+	-- 当前回合数
+	round = 0
 }
 
 --- 判断当前卡牌是否已经死亡
 -- @class function
 -- @return <vt>bool</vt> 返回是否单位已经死亡
 function CardPropertyClass:isDead()
-	return self.hitPoint <= 0
+	return tonumber(self.hitPoint) <= 0
 end
 
 --- 获得对象的地址 Debug用
@@ -80,6 +82,14 @@ function CardPropertyClass:getAddress()
 	local ret = tostring(self)
 	mt.__tostring = ts
 	return ret
+end
+
+--- 设置卡牌的当前回合数
+-- @class function
+-- @param round 设置的回合数
+function CardPropertyClass:setRound(round)
+-- 	print('self.round', self.round, 'round', round)
+	self.round = round
 end
 
 --- 获取死亡结算异能数组
@@ -114,24 +124,32 @@ function CardPropertyClass:new(o)
 	self.__index = self
 	
 	-- 不允许新增不存在的数据
-	self.__newindex = function(t, k) print('can`t create new field') end
+-- 	self.__newindex = function(t, k, v)
+-- 		-- 看是否值是在原表中存在，如果有则赋值，否则弹错
+-- 		print('card.__newindex t:', o)
+-- 		if self[k] then
+-- 			o[k] = v
+-- 		else
+-- 			error('can`t create new field')
+-- 		end
+-- 	end
 	
-	self.__tostring = function(t)
-		local tbl = {}
-		table.foreach(self, function(key, _)
-			local value = t[key]
-			local tps = type(value)
-			if tps == 'table' then
-				if key == 'ability' then
-					-- 输出一张卡牌对应的技能属性
-					table.insert(tbl, string.format("%s=%s", key, table.concat(value, "/")))
-				end
-			elseif type(value) ~= 'function' then
-				table.insert(tbl, string.format("%s=%s", key, tostring(value)))
-			end
-		end)
-		return table.concat(tbl, ", ")
-	end
+-- 	self.__tostring = function(t)
+-- 		local tbl = {}
+-- 		table.foreach(self, function(key, _)
+-- 			local value = t[key]
+-- 			local tps = type(value)
+-- 			if tps == 'table' then
+-- 				if key == 'ability' then
+-- 					-- 输出一张卡牌对应的技能属性
+-- 					table.insert(tbl, string.format("%s=%s", key, table.concat(value, "/")))
+-- 				end
+-- 			elseif type(value) ~= 'function' then
+-- 				table.insert(tbl, string.format("%s=%s", key, tostring(value)))
+-- 			end
+-- 		end)
+-- 		return table.concat(tbl, ", ")
+-- 	end
 	
 	return o
 end
@@ -164,14 +182,37 @@ function CardPropertyClass:isAllowNewField()
 	return not mt.__newindex
 end
 
---- 受伤
+local deathDespositeCallbackFunction = nil
+--- 设置清算函数外部回调
+-- @class function
+-- @param callback 回调函数
+function CardPropertyClass:setDeathDepositeCallbackFunction(callback)
+	if type(callback) == 'function' then
+		deathDespositeCallbackFunction = callback
+	end
+end
+
+
+--- 受伤<br/>
+-- 这里会触发该单位的死亡结算
 -- @class function
 -- @param atk 攻击力
 function CardPropertyClass:getHurt(atk)
+	print('getHurt type(atk)', type(atk))
+	print('getHurt type(self.hitPoint), hitPoint', type(self.hitPoint), self.hitPoint)
 	if self.hitPoint > 0 then
 		self.hitPoint = self.hitPoint - atk
 	else
-		print('Target is invalid!')
+		error('Target is invalid!')
+	end
+	
+	if self.hitPoint <= 0 then
+		print('DEAD_DEAD_DEAD', self.name, '死亡')
+		-- 死亡清算
+		if deathDespositeCallbackFunction then
+			print('调用死亡清算函数')
+			deathDespositeCallbackFunction(self)
+		end
 	end
 end
 
@@ -179,7 +220,13 @@ end
 -- 从数据库中获取对应ID的技能数据
 local getCardTableFromDataBase = function(nID)
 	local sqlTxt = string.format("select * from %s where id=%d", DB_TABLE_NAME, nID)
-	return util.GetDataFromDB("WarDrum.s3db", sqlTxt)
+	local retTbl, typesTbl = util.GetDataFromDB("WarDrum.s3db", sqlTxt)
+	-- 根据列表的属性设置表内数据的类型，主要就是number型和string型两种
+	if typesTbl then
+		table.foreach(typesTbl, print)
+	end
+	
+	return retTbl
 end
 
 --- 获得卡牌原始数据

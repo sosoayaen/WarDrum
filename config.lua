@@ -46,6 +46,8 @@ CONSTANTS = {
 
 	-- 异能响应窗口
 	ANSWER_WINDOW = {
+		-- 循环窗口，只用作流程判断，游戏中并无次窗口定义
+		WINDOW_CIRCLE = -1,
 		-- 无效窗口，保留
 		WINDOW_INVALID = 0,
 		-- 局开始
@@ -74,6 +76,21 @@ CONSTANTS = {
 		WINDOW_MATCH_END = 12,
 		-- 死亡窗口
 		WINDOW_DEATH = 100
+	},
+	ANSWER_WINDOW_DESC =
+	{
+		"局开始",
+		"回合开始",
+		"行动开始",
+		"目标指定前",
+		"目标指定后",
+		"攻击之前",
+		"攻击之后",
+		"防御之前",
+		"防御之后",
+		"行动结束",
+		"回合结束",
+		"局结束",
 	},
 	-- 异能作用的属性
 	ABILITY_INFLUENCE_PROPERTY_TARGET = {

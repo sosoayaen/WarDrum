@@ -46,8 +46,10 @@ dup = function(ori_tab)
         elseif (vtyp == "userdata") then
             -- TODO: dup or just point to?
             new_tab[i] = v;
-        else
-            new_tab[i] = v;
+--         elseif (vtyp == 'number') then
+--             new_tab[i] = tonumber(v);
+		else
+			new_tab[i] = v;
         end
     end
     return new_tab;
@@ -103,6 +105,10 @@ function GetDataFromDB(dbName, sqlTxt)
 	local cur, err = dbConn:execute(sqlTxt)
 	assert(cur, err)
 	
+	if not cur then
+		return ret, err
+	end
+	
 	local t = {}
 	repeat
 --		table.foreach(t, print)
@@ -117,12 +123,22 @@ function GetDataFromDB(dbName, sqlTxt)
 		end
 	until not t
 	
+	local typesTbl = cur:getcoltypes()
+	local columnNameTbl = cur:getcolnames()
+	
+	-- 返回列名到字段类型的哈希表
+	local columnTypeTbl = {}
+	
+	for idx, value in ipairs(columnNameTbl) do
+		columnTypeTbl[value] = typesTbl[idx]
+	end
+	
 	cur:close()
 	
 	-- 关闭连接，释放资源
 	if dbConn then dbConn:close() end
 	
-	return ret
+	return ret, columnTypeTbl
 end
 
 -- GetDataFromDB('DB/WarDrum.s3db', "select * from ability where id = 0")

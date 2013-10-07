@@ -6,6 +6,7 @@ package.path = ".\\?.lua;" .. package.path
 require "config"
 require "comm"
 require "card"
+require "util"
 
 local CONSTANTS = Config.CONSTANTS
 
@@ -94,6 +95,9 @@ local propertyAssistTable =
 }
 
 -- 对属性修改的函数
+-- @class function
+-- @param target 影响的目标
+-- @param effect 效果
 local doAbilityEffect = function(target, effect)
 	-- 得到影响的属性
 	local property = propertyAssistTable[effect.influenceType]
@@ -224,6 +228,19 @@ local depositeDeath = function(unit, totalUnit) -- 在每个行动后都需要�
 	end
 end
 
+-- 整体死亡结算，循环每个对象
+local deathDeposite = function(totalUnitArray)
+	-- 拷贝一个全局数据给死亡清算函数中的异能结算函数使用
+	local ttuArray = {}
+	table.foreachi(totalUnitArray, function(_, unit)
+		table.insert(ttuArray, unit)
+	end)
+	
+	table.foreachi(totalUnitArray, function(_, unit)
+		depositeDeath(unit, ttuArray)
+	end)
+end
+
 -- 攻击结算，一般简单为攻击者的攻击力减去防御者的血
 local depositeAttack = function(attackUnit, defendUnit)
 	defendUnit:getHurt(attackUnit.attack)
@@ -250,16 +267,33 @@ local GameLogicTable =
 		{window = CONSTANTS.ANSWER_WINDOW.WINDOW_MATCH_START},
 		-- 循环流程
 		{
+			--  表示是循环流程，这里的循环跳出标准为当局游戏结束，即场上只有一方阵营单位存在
+			window = CONSTANTS.ANSWER_WINDOW.WINDOW_CIRCLE,
 			-- 回合开始
-			{window = 1},
-			-- 行动开始
-			{},
-			-- 指定阶段
-			{},
-			-- 攻击阶段
-			{},
+			{window = CONSTANTS.ANSWER_WINDOW.WINDOW_ROUND_START},
+			-- 表示是循环流程
+			{
+				-- 这里的循环跳出标准为所有单位行动结束
+				window = CONSTANTS.ANSWER_WINDOW.WINDOW_CIRCLE,
+				-- 行动开始
+				{window = CONSTANTS.ANSWER_WINDOW.WINDOW_ACTION_START},
+				-- 指定阶段
+				{window = CONSTANTS.ANSWER_WINDOW.WINDOW_TARGET_CHOOSE},
+				-- 指定结束
+				{window = CONSTANTS.ANSWER_WINDOW.WINDOW_TARGET_CHOOSE_AFTER},
+				-- 攻击之前
+				{window = CONSTANTS.ANSWER_WINDOW.WINDOW_ATTACK_BEFORE},
+				-- 攻击之后
+				{window = CONSTANTS.ANSWER_WINDOW.WINDOW_ATTACK_AFTER},
+				-- 防御之前
+				{window = CONSTANTS.ANSWER_WINDOW.WINDOW_DEFEND_BEFORE},
+				-- 防御之后
+				{window = CONSTANTS.ANSWER_WINDOW.WINDOW_DEFEND_AFTER},
+				-- 行动结束
+				{window = CONSTANTS.ANSWER_WINDOW.WINDOW_ACTION_END},
+			},
 			-- 回合结束
-			{},
+			{window= CONSTANTS.ANSWER_WINDOW.WINDOW_ROUND_END},
 		},
 		-- 局结束
 		{window = CONSTANTS.ANSWER_WINDOW.WINDOW_MATCH_END},
@@ -278,6 +312,7 @@ local triggerAbility = function(ability)
 end
 
 -- 判断比赛是否结束
+-- @param aliveTbl 用以记录所有方面势力的存活单位数量
 local isMatchOver = function(aliveTbl)
 	local aliveCount = 0
 	table.foreach(aliveTbl, function(_, count)
@@ -286,30 +321,120 @@ local isMatchOver = function(aliveTbl)
 		end
 	end)
 	
+	-- 当只有阵营一方胜利的时候才认为游戏结束
+	-- 可支持团队作战
 	return aliveCount == 1
 end
 
--- 在两组数据中得到速度最快的
-local getActionUnit(round, cardOne, cardTwo)
+-- 在两组数据中得到速度最快的单位
+local getActionUnit = function(round, cardOne, cardTwo)
 	-- 根据当前的回合，得到速度最快的单位并返回
 	
-	-- 得到第一组最快的
-	local actionSequence = comm.getActionSequence(cardOne, cardTwo)
+	-- 得到混合速度排序
+	local actionSequence = comm.getActionSequence{cardOne, cardTwo}
 	
-	-- 得到A组第一个速度最快，并且round小于当前round的单位
+	print('getActionUnit actionSequence:', actionSequence, #actionSequence)
+	-- 得到第一个速度最快，并且round在当前回合的单位
 	local unit = nil
-	table.foreachi(actionSequence, function(_, card)
-		if card.round < round then
-			unit = card
-			break
+	local firstAliveUnit = nil
+	for _, card in ipairs(actionSequence) do
+		if not card:isDead() then
+			-- 记录第一个活着的速度最快的单位
+			if not firstAliveUnit then
+				firstAliveUnit = card
+			end
+			
+			-- 选出活着的，当前未行动的单位
+			if card.round < round then
+				unit = card
+				break
+			end
 		end
-	end)
-	
-	if not unit then
-		unit = actionSequence[1]
 	end
 	
-	return unit
+	-- 如果没有当前回合的单位，则返回速度最快的活着的单位
+	if not unit then
+		unit = firstAliveUnit
+	end
+	
+--	print('getActionUnit, unit', unit)
+	
+	return unit 
+end
+
+-- 得到防御的单位（被攻击）
+-- @class function
+-- @param attackUnit 攻击单位
+-- @param totalUnitArray 整体单位数组
+-- @return 返回指定攻击的单位，如果没有（异常状态下）则返回 nil
+local getDefendUnit = function(attackUnit, totalUnitArray)
+	local groupID = attackUnit.groupID
+	local defendUnit = nil
+	for _, unit in ipairs(totalUnitArray) do
+		-- TODO: 这里还需要判断是否受异能指定的影响
+		if unit.groupID ~= groupID and not unit:isDead() then
+			defendUnit = unit
+			break
+		end
+	end
+	
+	return defendUnit
+end
+
+-- 得到两个表合并后的数据
+local getCombineData = function(tbl1, tbl2)
+	local retTbl = {}
+	table.foreach(tbl1, function(_, v) table.insert(retTbl, v) end)
+	table.foreach(tbl2, function(_, v) table.insert(retTbl, v) end)
+	return retTbl
+end
+
+-- 是否当前回合结束
+-- @param round 当前回合
+-- @param totalUnitArray 所有单位数组（这里如果是所有存活单位数组则效率更高）
+local isRoundOver = function(round, totalUnitArray)
+	for _, unit in ipairs(totalUnitArray) do
+--		print(unit)
+		-- 选择出活着的单位，并且该单位的回合数要小于当前回合数，表示回合未完结
+--		print('isRoundOver unit.name:', unit.name, 'unit.id', unit.id, 'unit.round', unit.round, 'unit.hitPoint', unit.hitPoint, 'groupID', unit.groupID)
+		if not unit:isDead() and unit.round < round then
+			return false
+		end
+	end
+	
+	return true
+end
+
+-- 根据当前的窗口，执行对应的异能响应的列表
+-- @class function
+-- @param status 响应窗口
+local getAnswerAbilityArray = function(status)
+	local abilityArray = answerWindowAssistTable[status]
+	if type(abilityArray) ~= "table" then
+		return
+	end
+	return abilityArray
+end
+
+-- 攻击单位数据输出
+local showAttackUnit = function(unit)
+	if unit then
+		print('攻击单位 name', unit.name, 'round', unit.round, 'groupID', unit.groupID, 'hitPoint', unit.hitPoint, 'attack', unit.attack)
+	end
+end
+
+-- 防御单位数据输出
+local showDefendUnit = function(unit)
+	if unit then
+		print('防御单位 name', unit.name, 'round', unit.round, 'groupID', unit.groupID, 'hitPoint', unit.hitPoint)
+	end
+end
+
+-- 显示单位数据
+local showUnit = function(unit)
+	if unit then
+		print(unit.name, 'groupID', unit.groupID, 'attack', unit.attack, 'speed', unit.speed, 'hitPoint', unit.hitPoint)
+	end
 end
 
 -- 战斗函数
@@ -322,63 +447,163 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 		bFirstWin = false	-- 先默认定义非第一个胜利
 	}
 
-	-- //////////////////////
-	-- 战斗前准备
-	-- 1. 得到单位行动顺序
-	local actionSequences = comm.getActionSequence{cardGroupOne, cardGroupTwo}
-
-	-- 按照各个角色的异能特性，整理异能
-	-- 2.按顺序结算异能发动
-	table.foreachi(actionSequences, function(_, unit)
-		if unit.className ~= "CARD" then
-			-- 如果不是卡牌，则直接退出
-			return
-		end
-
-		local abilityArray = unit.ability
-		-- 判断下当前卡牌是否拥有异能
-		if abilityArray and type(abilityArray) == 'table' then
-			table.foreachi(abilityArray, function(_, abilityID)
-				-- 通过异能的ID得到异能对象
-				local ability = Ability.GetAbilityObj(abilityID)
-				if ability then
-					-- 把当前异能加入窗口响应列表
-					triggerAbility(ability)
-				end
-			end)
-		end
-	end)
-
 	--[[
 		战斗流程
 	]]
-
-	--//////////////////////
-	-- 进场阶段
-	-- 1. 进场技能结算，把所有单位的技能发动，技能的发动按照其响应阶段决定
-	
-	local aliveTable = {}
-	--  得到每一方存活数量
-	table.foreach(actionSequences, function(_, unit)
-		aliveTable[unit.groupID] = (aliveTable[unit.groupID] or 0) + 1
-	end)
-	
 	-- 当前回合
-	local nRound = 1
+	local nRound = 0
 	
-	while(not isMatchOver(aliveTable)) do
-		-- 根据速度优先值行动
-		getActionUnit(nRound, cardGroupOne, cardGroupTwo)
+	-- 存活表
+	local aliveTable = {}
+	
+	table.foreachi(GameLogicTable.flow, function(_, flowStep)
+		-- 缓存下window，方便后面简化书写
+		local window = flowStep.window
 		
-	end
-	
-	-- retData.sequences = actionSequences;
+		if window == CONSTANTS.ANSWER_WINDOW.WINDOW_MATCH_START then
+			print('Game Start...')
+			-- 比赛开始
+			-- 异能进场，数据初始化等操作
+			-- //////////////////////
+			-- 战斗前准备
+			-- 1. 得到单位行动顺序
+			local actionSequences = comm.getActionSequence{cardGroupOne, cardGroupTwo}
+-- 			print('actionSequence...')
+			-- 按照各个角色的异能特性，整理异能
+			-- 2.按顺序结算异能发动
+			table.foreachi(actionSequences, function(_, unit)
+				if unit.className ~= "CARD" then
+					-- 如果不是卡牌，则直接退出
+					return
+				end
+				showUnit(unit)
+				
+				local abilityArray = unit.ability
+				-- 判断下当前卡牌是否拥有异能
+				if abilityArray and type(abilityArray) == 'table' then
+					table.foreachi(abilityArray, function(_, abilityID)
+						-- 通过异能的ID得到异能对象
+						local ability = Ability.GetAbilityObj(abilityID)
+						if ability then
+							-- 把当前异能加入窗口响应列表
+							triggerAbility(ability)
+						end
+					end)
+				end
+			end)
+			
+			--  2.得到每一方存活数量
+			table.foreach(actionSequences, function(_, unit)
+				aliveTable[unit.groupID] = (aliveTable[unit.groupID] or 0) + 1
+			end)
+		-- 回合循环
+		elseif window == CONSTANTS.ANSWER_WINDOW.WINDOW_CIRCLE then
+			-- 开个死循环，直到某一方胜利后跳出
+			-- 本回合行动单位
+			local actionUnit = nil
+			repeat
+				-- 回合循环窗口
+				for _, roundCircle in ipairs(flowStep) do
+					
+--					print('roundCircle.window', roundCircle.window)
+					-- 首先判断是否不是循环
+					if roundCircle.window ~= CONSTANTS.ANSWER_WINDOW.WINDOW_CIRCLE then
+						
+						-- 1.回合开始 回合数目自增
+						if roundCircle.window == CONSTANTS.ANSWER_WINDOW.WINDOW_ROUND_START then
+							-- 如果为回合开始，则把回合数加1
+							nRound = nRound + 1
+							print('Round:', nRound)
+						elseif roundCircle.window == CONSTANTS.ANSWER_WINDOW.WINDOW_ROUND_END then
+							
+						end
+						
+-- 						print(string.format("当前窗口为[%s]", tostring(CONSTANTS.ANSWER_WINDOW_DESC[roundCircle.window])))
+						
+						-- 2.得到当前窗口的异能响应列表，并逐一响应（这里只有回合开始和回合结束的两个窗口）
+						local abilityArray = getAnswerAbilityArray(roundCircle.window)
+						
+						if type(abilityArray) == 'table' then
+							table.foreach(abilityArray, function(_, ability)
+								-- 响应异能
+								depositeAbility(ability, ability.controler, getCombineData(cardGroupOne, cardGroupTwo))
+								
+								-- 异能响应结束后要进行死亡窗口结算
+								deathDeposite(getCombineData(cardGroupOne, cardGroupTwo))
+							end)
+						end
+					-- 行动循环
+					else
+						local defendUnit = nil
+						repeat
+							for _, actionCircle in ipairs(roundCircle) do
+-- 								print('actionCircle.window:', actionCircle.window)
+								-- 2.得到当前窗口的异能响应列表，并逐一响应
+								local abilityArray = getAnswerAbilityArray(actionCircle.window)
+								if type(abilityArray) == 'table' then
+									table.foreach(abilityArray, function(_, ability)
+										-- 响应异能
+										depositeAbility(ability, ability.controler, getCombineData(cardGroupOne, cardGroupTwo))
+										
+										-- 异能响应结束后要进行死亡窗口结算
+										deathDeposite(getCombineData(cardGroupOne, cardGroupTwo))
+									end)
+								end
+								
+ 								print(string.format("当前窗口为[%s]", tostring(CONSTANTS.ANSWER_WINDOW_DESC[actionCircle.window])))
+								
+								-- 对选出的单位进行动作
+								if actionCircle.window == CONSTANTS.ANSWER_WINDOW.WINDOW_ACTION_START then
+									-- 选出行动单位
+									actionUnit = getActionUnit(nRound, cardGroupOne, cardGroupTwo)
+									showAttackUnit(actionUnit)
+								elseif actionCircle.window == CONSTANTS.ANSWER_WINDOW.WINDOW_TARGET_CHOOSE then
+									-- 攻击前选出对手
+									defendUnit = getDefendUnit(actionUnit, getCombineData(cardGroupOne, cardGroupTwo))
+									showDefendUnit(defendUnit)
+								elseif actionCircle.window == CONSTANTS.ANSWER_WINDOW.WINDOW_ATTACK_AFTER then
+									-- 攻击后，对应防御单位受伤
+									if defendUnit then
+										defendUnit:getHurt(actionUnit.attack)
+										if defendUnit:isDead() then
+											aliveTable[defendUnit.groupID] = aliveTable[defendUnit.groupID] - 1
+											showDefendUnit(defendUnit)
+										end
+									end
+								elseif actionCircle.window == CONSTANTS.ANSWER_WINDOW.WINDOW_ACTION_END then
+-- 									print('actionUnit', actionUnit)
+									if actionUnit then
+										actionUnit:setRound(nRound)
+-- 										showAttackUnit(actionUnit)
+									end
+								end
+							end
+						until isMatchOver(aliveTable) or isRoundOver(nRound, getCombineData(cardGroupOne, cardGroupTwo))
+					end					
+				end -- end of 循环回合窗口
+			until isMatchOver(aliveTable)
+			
+		elseif window == CONSTANTS.ANSWER_WINDOW.WINDOW_MATCH_END then
+			-- 比赛结束
+			print("Game End.........")
+			print("总回合数目:", nRound)
+			local whichGroupWin = nil
+			for groupID, aliveCount in pairs(aliveTable) do
+				if aliveCount > 0 then
+					whichGroupWin = groupID
+					break
+				end
+			end
+			print("胜利组别:", whichGroupWin)
+		end
+	end)
 
 	return retData
 end
 
 -- 得到卡牌堆
-local CardHeap = comm.readCardData("card_data.txt")
+-- local CardHeap = comm.readCardData("card_data.txt")
+local CardHeap = comm.readCardDataFromDB()
 
 -- 处理一次战役
 -- @class function
@@ -433,6 +658,6 @@ end
 
 HandleBattle({userID = 111}, {userID = 222});
 
-local a = Ability.GetAbilityObj(1)
+-- local a = Ability.GetAbilityObj(1)
 
-print(a.name, a.description)
+-- print(a.name, a.description)
