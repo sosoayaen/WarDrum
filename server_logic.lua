@@ -566,6 +566,7 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 									if defendUnit then
 										defendUnit:getHurt(actionUnit.attack)
 										if defendUnit:isDead() then
+											-- 对象死亡后更新存活列表
 											aliveTable[defendUnit.groupID] = aliveTable[defendUnit.groupID] - 1
 											showDefendUnit(defendUnit)
 										end

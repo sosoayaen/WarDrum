@@ -92,6 +92,15 @@ CONSTANTS = {
 		"回合结束",
 		"局结束",
 	},
+	-- 异能响应类型，只在自己行动的时候响应
+	ANSWER_TYPE_ME = 1,
+	-- 在己方行动时
+	ANSWER_TYPE_WE = 2,
+	-- 在地方行动的时候响应
+	ANSWER_TYPE_OPPONENT = 3,
+	-- 在所有单位行动的时候皆可响应
+	ANSWER_TYPE_ALL = 4,
+	
 	-- 异能作用的属性
 	ABILITY_INFLUENCE_PROPERTY_TARGET = {
 		-- 无任何影响
@@ -103,6 +112,21 @@ CONSTANTS = {
 		-- 影响速度
 		SPEED = 3
 	},
+	
+	-- 异能条件判断所用的属性
+	ABILITY_CONDITION_INFLUENCE_PROPERTY = {
+	
+		INVALIDE = 0,
+		
+		ATTACK = 1,
+		
+		HITPOINT = 2,
+		
+		SPEED = 3,
+		
+		-- 是否受伤
+		GETHURT = 4,
+	}
 	-- 异能影响的单位范围，全员和单体
 	-- ABILITY_TARGET_INFLUENCE_RANGE = {
 		-- 全场单位
@@ -121,6 +145,20 @@ CONSTANTS = {
 		TARGET_ME = 7,
 		-- 己方全员非自己
 		TARGET_ALL_WE_NOT_ME = 8,
+		-- 敌方全员非目标单位
+		TARGET_ALL_OPPONENT_NOT_TARGET = 9,
+		-- 目前行动的单位
+		TARGET_ACTION_UNIT = 10,
+		-- 目前防御的单位
+		TARGET_DEFEND_UNIT = 11,
+		-- 己方行动单位
+		TARGET_WE_ACTION_UNIT = 12,
+		-- 己方防御单位
+		TARGET_WE_DEFEND_UNIT = 13,
+		-- 敌方行动单位
+		TARGET_OPPONENT_ACTION_UNIT = 14,
+		-- 敌方防御单位
+		TARGET_OPPONENT_DEFEND_UNIT = 15,
 --	},
 	-- 异能种类
 	ABILITY_TYPES = {
@@ -156,6 +194,7 @@ CONSTANTS = {
 		-- 攻击力合
 		ATTACK_SUMMATION = 11,
 	},
+	-- 异能用于判断条件的类型，如血量、或者目标是否受到伤害
 	-- 异能选择额外判断，是否取反等
 	ABILITY_TARGET_CHOOSE_TACTICS_EXT = {
 		-- 默认值
@@ -167,6 +206,8 @@ CONSTANTS = {
 	-- 条件判断标准
 	JUDGE_STANDARD =
 	{
+		-- 无条件
+		NONE = 0,
 		-- 等于
 		EQUALL = 1,
 		-- 大于
@@ -193,5 +234,6 @@ CONSTANTS = {
 	-- 异能作用于异能状态，相当于异能起效后给对应的目标增加异能
 	EFFECT_TYPE_ABILITY = 2,
 	
+	-- 用于条件判断的属性，如血量、攻击力等
 	
 }

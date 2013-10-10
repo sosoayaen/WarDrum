@@ -66,10 +66,13 @@ local AbilityClass = {
 --	property = {
 
 		-- 异能种类
-		type = CONSTANTS.ABILITY_TYPES.UNKNOW,
+		typehood = CONSTANTS.ABILITY_TYPES.UNKNOW,
 		-- 响应时机
 		-- @see CONSTANTS.answerWindow
 		answerWindow = CONSTANTS.ANSWER_WINDOW.WINDOW_INVALID,
+		
+		-- 响应类型，响应自己，响应他人，全响应
+		answerType = CONSTANTS.ANSWER_TYPE_ME,
 
 		-- 异能响应条件
 		answerCondition =
@@ -108,7 +111,7 @@ local AbilityClass = {
 			{
 				-- 效果作用类型，目前仅有状态效果、属性效果
 				-- 状态效果等同于增加一个异能，而属性则为在三围上有效果
-				effectType = CONSTANTS.EFFECT_TYPE_PROPERTY,
+				mode = CONSTANTS.EFFECT_TYPE_PROPERTY,
 
 				targetInfluenceRange = CONSTANTS.TARGET_ME,
 
