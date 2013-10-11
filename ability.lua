@@ -78,14 +78,13 @@ local AbilityClass = {
 		answerCondition =
 		{
 			{
-				-- 异能目标范围
+				-- 异能用于判断条件是否成立的目标范围
 				-- 表明此异能的目标是全体还是单体，还有己方和敌方
 				-- @see CONSTANTS.targetInfluenceRange
 				targetInfluenceRange = CONSTANTS.TAEGET_ANY, -- 默认单体
 
-				-- 异能作用属性
-				-- 表明此异能会改变的属性，目前无非 『攻击力』、『速度』、『血量』
-				-- @see CONSTANTS.influencePropertyTarget
+				-- 异能用于判断的条件
+				-- 目前无非 『攻击力』、『速度』、『血量』
 				influenceType = CONSTANTS.ABILITY_INFLUENCE_PROPERTY_TARGET.ATTACK,
 
 				-- 异能影响的数值
@@ -166,7 +165,60 @@ end
 -- 从数据库中获取对应ID的技能数据
 local getAbilityTableFromDataBase = function(nID)
 	local sqlTxt = string.format("select * from %s where id=%d", DB_TABLE_NAME, nID)
-	return util.GetDataFromDB("DB/WarDrum.s3db", sqlTxt)
+	local tbl, tpsTbl = util.GetDataFromDB("DB/WarDrum.s3db", sqlTxt)
+	
+	table.foreachi(tbl, function(_, rowData)
+		table.foreach(tpsTbl, function(key, value)
+			local bNumber = false
+			value = string.lower(value)
+			if string.find(value, 'int') then
+				bNumber = true
+			end
+			if bNumber then
+				rowData[key] = tonumber(rowData[key])
+			end
+		end)
+	end)
+	
+	local retTbl = {}
+	table.foreach(tbl[1], function(key, value)
+		local subTblName, subKey = string.match(key, '([^_]+)_(%w+)')
+		print(string.format('-- key %s, value %s, subTblName %s, subKey %s', key, value, tostring(subTblName), tostring(subKey)))
+		
+		if subKey then
+			local subTbl = retTbl[subTblName]
+			if not subTbl then
+				subTbl = {}
+			end
+			
+			-- 根据内容判断是否是数组
+			if type(value) == 'string' then
+				-- 循环得到每个值
+				local cnt = 1
+				for subValue in string.gmatch(value, "([^,]+)") do
+					-- 得到子表，如果没有则创建
+					local itemTbl = subTbl[cnt]
+					if not itemTbl then
+						itemTbl = {}
+						table.insert(subTbl, itemTbl)
+					end
+					
+					itemTbl[subKey] = subValue
+					
+					cnt = cnt + 1
+				end
+			else
+				table.insert(subTbl, {[subKey] = value})
+			end
+			
+			retTbl[subTblName] = subTbl
+		else
+			retTbl[key] = value
+		end
+	end)
+	
+	table.foreach(retTbl, print)
+	return retTbl
 end
 
 --- 通过技能ID得到对应的技能实体</br>
@@ -175,7 +227,6 @@ end
 -- @param nID 技能的ID
 -- @return <vt>Ability</vt> 得到技能对象
 function GetAbilityObj(nID)
-
 	local abilityObj = nil
 
 	if nID and nID >= 0 then
@@ -184,23 +235,21 @@ function GetAbilityObj(nID)
 
 		if not abilityObj then
 
-			local result = getAbilityTableFromDataBase(nID)
-
-			abilityObj = result[1]
-
+			abilityObj = getAbilityTableFromDataBase(nID)
+			
 			if bUseCache and abilityObj then
 				-- 缓存数据
 				AbilityCache[nID] = abilityObj
 			end
 		end
 	end
-
+	
 	if not abilityObj then
 		return nil
 	end
 
 	-- 根据元数据创建一个异能对象
-	local ability = table.dup(abilityObj)
+	local ability = table.dup(abilityObj)	
 
 	return AbilityClass:new(ability)
 end

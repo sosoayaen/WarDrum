@@ -74,6 +74,8 @@ CONSTANTS = {
 		WINDOW_ROUND_END = 11,
 		-- 局结束
 		WINDOW_MATCH_END = 12,
+		-- 攻击窗口
+		WINDOW_ATTACK = 13,
 		-- 死亡窗口
 		WINDOW_DEATH = 100
 	},
@@ -91,15 +93,24 @@ CONSTANTS = {
 		"行动结束",
 		"回合结束",
 		"局结束",
+		"攻击窗口",
 	},
 	-- 异能响应类型，只在自己行动的时候响应
-	ANSWER_TYPE_ME = 1,
-	-- 在己方行动时
-	ANSWER_TYPE_WE = 2,
-	-- 在地方行动的时候响应
-	ANSWER_TYPE_OPPONENT = 3,
-	-- 在所有单位行动的时候皆可响应
-	ANSWER_TYPE_ALL = 4,
+	ANSWER_TYPE_ACTION_ME = 1,
+	-- 在己方行动时响应
+	ANSWER_TYPE_ACTION_WE = 2,
+	-- 在己方非自己行动时
+	ANSWER_TYPE_ACTION_WE_NOT_ME = 3,
+	-- 在自己是防御方的时候允许响应
+	ANSWER_TYPE_DEFEND_ME = 4,
+	-- 在己方是防御方时响应
+	ANSWER_TYPE_DEFEND_WE = 5,
+	-- 在己方非自己是防御单位时
+	ANSWER_TYPE_DEFEND_WE_NOT_ME = 6,
+	-- 在敌方行动的时候响应
+	ANSWER_TYPE_OPPONENT = 7,
+	-- 在任意单位行动的时候皆可响应
+	ANSWER_TYPE_ACTION_ALL = 8,
 	
 	-- 异能作用的属性
 	ABILITY_INFLUENCE_PROPERTY_TARGET = {
@@ -123,10 +134,9 @@ CONSTANTS = {
 		HITPOINT = 2,
 		
 		SPEED = 3,
-		
 		-- 是否受伤
 		GETHURT = 4,
-	}
+	},
 	-- 异能影响的单位范围，全员和单体
 	-- ABILITY_TARGET_INFLUENCE_RANGE = {
 		-- 全场单位
@@ -159,6 +169,8 @@ CONSTANTS = {
 		TARGET_OPPONENT_ACTION_UNIT = 14,
 		-- 敌方防御单位
 		TARGET_OPPONENT_DEFEND_UNIT = 15,
+		-- 敌方非防御任一单位
+		TARGET_ANY_OPPONENT_NOT_TARGET = 16,
 --	},
 	-- 异能种类
 	ABILITY_TYPES = {

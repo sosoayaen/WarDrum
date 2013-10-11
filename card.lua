@@ -99,6 +99,11 @@ function CardPropertyClass:getDeathAbilityArray()
 	return self.deathAbility
 end
 
+local showObj = function(ability)
+	print('************')
+	table.foreach(ability, print)
+	print('************')
+end
 --- 创建一个卡牌对象</br>
 -- 所有的卡牌都要通过此函数生成
 -- @class function
@@ -113,8 +118,13 @@ function CardPropertyClass:new(o)
 	-- 产生异能对象
 	local abilitys = {}
 	if o.abilitys and o.abilitys ~= '' then
-		for abilityId in string.gmatch(o.abilitys) do
-			abilitys[abilityId] = Ability.GetAbilityObj(tonumber(abilityId))
+		for abilityId in string.gmatch(o.abilitys, '[^,]+') do
+			print('abilityId', abilityId,'cardNum', o.id)
+			local ability = Ability.GetAbilityObj(tonumber(abilityId))
+			-- 增加此异能的拥有者
+			ability.controler = o
+			table.insert(abilitys, ability)
+			-- showObj(abilitys[abilityId])
 		end
 	end
 	o.abilitys = abilitys
@@ -198,13 +208,13 @@ end
 -- @class function
 -- @param atk 攻击力
 function CardPropertyClass:getHurt(atk)
-	print('getHurt type(atk)', type(atk))
-	print('getHurt type(self.hitPoint), hitPoint', type(self.hitPoint), self.hitPoint)
+	print('getHurt', self.name, 'hitPoint', self.hitPoint, 'atk', atk)
 	if self.hitPoint > 0 then
-		self.hitPoint = self.hitPoint - atk
+		self.hitPoint = self.hitPoint + atk
 	else
 		error('Target is invalid!')
 	end
+	print('getHurt', self.name, 'hitPoint', self.hitPoint)
 	
 	if self.hitPoint <= 0 then
 		print('DEAD_DEAD_DEAD', self.name, '死亡')
@@ -216,6 +226,17 @@ function CardPropertyClass:getHurt(atk)
 	end
 end
 
+--- 修改属性
+-- @class funciton
+-- @param property 可以修改血量、速度、攻击的属性
+-- @param value 对应的基础值，可以有正负
+function CardPropertyClass:modifyProperty(property, value)
+	if property == 'hitPoint' then
+		self:getHurt(value)
+	else
+		self[property] = self[property] + value
+	end
+end
 
 -- 从数据库中获取对应ID的技能数据
 local getCardTableFromDataBase = function(nID)

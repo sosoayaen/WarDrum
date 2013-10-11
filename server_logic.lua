@@ -8,6 +8,35 @@ require "comm"
 require "card"
 require "util"
 
+-- 一些全局的状态和统计数值变量区域
+local BattleSummaryDataTbl = {
+	-- 当前行动造成的伤害值，行动开始时清空
+	currentActionInjuryValue = 0,
+	-- 存活列表
+	aliveTable = {},
+}
+
+-- 攻击单位数据输出
+local showAttackUnit = function(unit)
+	if unit then
+		print('攻击单位', unit.name, 'round', unit.round, 'groupID', unit.groupID, 'hitPoint', unit.hitPoint, 'attack', unit.attack)
+	end
+end
+
+-- 防御单位数据输出
+local showDefendUnit = function(unit)
+	if unit then
+		print('防御单位', unit.name, 'round', unit.round, 'groupID', unit.groupID, 'hitPoint', unit.hitPoint)
+	end
+end
+
+-- 显示单位数据
+local showUnit = function(unit)
+	if unit then
+		print(unit.name, 'groupID', unit.groupID, 'attack', unit.attack, 'speed', unit.speed, 'hitPoint', unit.hitPoint)
+	end
+end
+
 local CONSTANTS = Config.CONSTANTS
 
 -- 异能响应总表
@@ -37,30 +66,67 @@ local answerWindowAssistTable =
 	[CONSTANTS.ANSWER_WINDOW.WINDOW_ROUND_END] = {},
 	-- 局结束
 	[CONSTANTS.ANSWER_WINDOW.WINDOW_MATCH_END] = {},
+	-- 攻击时
+	[CONSTANTS.ANSWER_WINDOW.WINDOW_ATTACK] = {},
 }
 
 -- 得到目标对象的辅助表
 local targetAssistTable =
 {
-	[CONSTANTS.TARGET_ALL] = function(totalUnitArray, selfGroupID) end,
-	[CONSTANTS.TARGET_ANY] = function(totalUnitArray, selfGroupID) end,
-	[CONSTANTS.TARGET_ANY_WE] = function(totalUnitArray, selfGroupID) end,
-	[CONSTANTS.TARGET_ANY_OPPONENT] = function(totalUnitArray, selfGroupID) end,
-	[CONSTANTS.TARGET_ALL_WE] = function(totalUnitArray, selfGroupID) end,
-	[CONSTANTS.TARGET_ALL_OPPONENT] = function(totalUnitArray, selfGroupID) end,
-	[CONSTANTS.TARGET_ME] = function(totalUnitArray, selfGroupID) end,
-	[CONSTANTS.TARGET_ALL_WE_NOT_ME] = function(totalUnitArray, selfGroupID) end,
+	[CONSTANTS.TARGET_ALL] = function(totalUnitArray, actionUnit, defendUnit) end,
+	[CONSTANTS.TARGET_ANY] = function(totalUnitArray, actionUnit, defendUnit) end,
+	[CONSTANTS.TARGET_ANY_WE] = function(totalUnitArray, actionUnit, defendUnit) end,
+	[CONSTANTS.TARGET_ANY_OPPONENT] = function(totalUnitArray, actionUnit, defendUnit) end,
+	[CONSTANTS.TARGET_ALL_WE] = function(totalUnitArray, actionUnit, defendUnit) end,
+	[CONSTANTS.TARGET_ALL_OPPONENT] = function(totalUnitArray, actionUnit, defendUnit) end,
+	[CONSTANTS.TARGET_ME] = function(totalUnitArray, actionUnit, defendUnit) end,
+	[CONSTANTS.TARGET_ALL_WE_NOT_ME] = function(totalUnitArray, actionUnit, defendUnit) end,
+	-- 敌方全员非目标单位
+	[CONSTANTS.TARGET_ALL_OPPONENT_NOT_TARGET] = function(totalUnitArray, actionUnit, defendUnit)
+			assert(totalUnitArray and actionUnit and defendUnit, '')
+			local retTbl = {}
+			local groupID = actionUnit.groupID
+			table.foreach(totalUnitArray, function(_, unit)
+				if unit.groupID ~= groupID and unit ~= defendUnit then
+					table.insert(retTbl, unit)
+				end
+			end)
+			return retTbl
+		end,
+	-- 目前行动的单位
+	[CONSTANTS.TARGET_ACTION_UNIT] = function(totalUnitArray, actionUnit, defendUnit) end,
+	-- 目前防御的单位
+	[CONSTANTS.TARGET_DEFEND_UNIT] = function(totalUnitArray, actionUnit, defendUnit) end,
+	-- 己方行动单位
+	[CONSTANTS.TARGET_WE_ACTION_UNIT] = function(totalUnitArray, actionUnit, defendUnit) end,
+	-- 己方防御单位
+	[CONSTANTS.TARGET_WE_DEFEND_UNIT] = function(totalUnitArray, actionUnit, defendUnit) end,
+	-- 敌方行动单位
+	[CONSTANTS.TARGET_OPPONENT_ACTION_UNIT] = function(totalUnitArray, actionUnit, defendUnit) end,
+	-- 敌方防御单位
+	[CONSTANTS.TARGET_OPPONENT_DEFEND_UNIT] = function(totalUnitArray, actionUnit, defendUnit) end,
 }
 
 -- 得到目标的对象的比对属性函数辅助表
 local targetConditionAssistTable =
 {
 	-- 攻击力
-	[1] = function(totalUnitArray) end,
+	[CONSTANTS.ABILITY_CONDITION_INFLUENCE_PROPERTY.ATTACK] = function(conditionTargetUnitArray)
+		local retTbl = {}
+		table.foreach(conditionTargetUnitArray, function(_, unit)
+			table.insert(retTbl, unit.attack)
+		end)
+		return retTbl
+	end,
 	-- 血量
-	[2] = function(totalUnitArray) end,
+	[CONSTANTS.ABILITY_CONDITION_INFLUENCE_PROPERTY.HITPOINT] = function(conditionTargetUnitArray) end,
 	-- 速度
-	[3] = function(totalUnitArray) end,
+	[CONSTANTS.ABILITY_CONDITION_INFLUENCE_PROPERTY.SPEED] = function(conditionTargetUnitArray) end,
+	-- 受伤，或者造成伤害
+	[CONSTANTS.ABILITY_CONDITION_INFLUENCE_PROPERTY.GETHURT] = function(conditionTargetUnitArray) 
+		-- 返回全局的当前行动后造成的伤害
+		return BattleSummaryDataTbl.currentActionInjuryValue
+	end,
 }
 
 -- 异能作用目标函数辅助表，得到的是作用的单位
@@ -89,93 +155,165 @@ local conditionCompareAssistTable =
 
 local propertyAssistTable =
 {
-	[1] = 'attack',
-	[2] = 'hitPoint',
-	[3] = 'speed',
+	[CONSTANTS.ABILITY_INFLUENCE_PROPERTY_TARGET.ATTACK] = 'attack',
+	[CONSTANTS.ABILITY_INFLUENCE_PROPERTY_TARGET.HITPOINT] = 'hitPoint',
+	[CONSTANTS.ABILITY_INFLUENCE_PROPERTY_TARGET.SPEED] = 'speed',
 }
 
 -- 对属性修改的函数
 -- @class function
 -- @param target 影响的目标
 -- @param effect 效果
-local doAbilityEffect = function(target, effect)
+local doAbilityEffect = function(targets, effect)
 	-- 得到影响的属性
-	local property = propertyAssistTable[effect.influenceType]
-	local value = effect.influenceValue
+	local property = propertyAssistTable[tonumber(effect.influenceType)]
+	assert(property, string.format('-- doAbilityEffect, effect.influenceType %s', effect.influenceType))
+	local value = tonumber(effect.influenceValue)
 	
-	if property then
-		print(string.format("异能起效，异能[%s], 修正值[%d]", property, value))
-		target[property] = target[property] + value
-	end
+	-- target可能是多个的数组
+	table.foreach(targets, function(_, unit)
+		if property then
+			print(string.format("异能起效，异能[%s], 修正值[%d]，影响单位[%s]", property, value, unit.name))
+			unit:modifyProperty(property, value)
+		end
+	end)
+	
 end
+
+-- 异能在响应窗口执行时遵循的规则
+local answerTypeAssistTable = {
+	-- 异能响应类型，只在自己行动的时候响应
+	[CONSTANTS.ANSWER_TYPE_ACTION_ME] = function(ability, actionUnit, defendUnit, totalUnitArray) 
+		-- 判断是否行动方就是异能所有者，一般用在只对自己有效的异能
+		return ability.controler == actionUnit 
+	end,
+	-- 在己方行动时响应
+	[CONSTANTS.ANSWER_TYPE_ACTION_WE] = function(ability, actionUnit, defendUnit, totalUnitArray)
+		-- 判断是否行动方是己方行动
+		return ability.controler.groupID == actionUnit.groupID
+	end,
+	-- 在己方非自己行动时
+	[CONSTANTS.ANSWER_TYPE_ACTION_WE_NOT_ME] = function(ability, actionUnit, defendUnit, totalUnitArray)
+		return ability.controler.groupID == actionUnit.groupID and ability.controler ~= actionUnit
+	end,
+	-- 在自己是防御方的时候允许响应
+	[CONSTANTS.ANSWER_TYPE_DEFEND_ME] = function(ability, actionUnit, defendUnit, totalUnitArray)
+		return ability.controler == defendUnit
+	end,
+	-- 在己方是防御方时响应
+	[CONSTANTS.ANSWER_TYPE_DEFEND_WE] = function(ability, actionUnit, defendUnit, totalUnitArray)
+		return ability.controler.groupID == defendUnit.groupID
+	end,
+	-- 在己方非自己是防御单位时
+	[CONSTANTS.ANSWER_TYPE_DEFEND_WE_NOT_ME] = function(ability, actionUnit, defendUnit, totalUnitArray)
+		return ability.controler.groupID == defendUnit.groupID and ability.controler ~= defendUnit
+	end,
+	-- 在敌方行动的时候响应
+	[CONSTANTS.ANSWER_TYPE_OPPONENT] = function(ability, actionUnit, defendUnit, totalUnitArray)
+		return ability.controler.groupID ~= actionUnit.groupID
+	end,
+	-- 在任意单位行动的时候皆可响应
+	[CONSTANTS.ANSWER_TYPE_ACTION_ALL] = function(ability, actionUnit, defendUnit, totalUnitArray)
+		return true
+	end,
+}
 
 -- 异能结算
 -- 异能结算是结算的一个大功能，因为异能多种多样，各自的效果也完全不同
 -- @class function
 -- @param ability 发动的异能（实例）
--- @param controlUnit 施法单位
+-- @param actionUnit 行动单位
+-- @param defendUnit 当前防御单位，较少用到，在获取异能的目标范围为地方非防守单位时需要用到
 -- @param totalUnitArray 所有参战单位
-local depositeAbility = function(ability, controlUnit, totalUnitArray)
+local depositeAbility = function(ability, actionUnit, defendUnit, totalUnitArray)
 	-- TODO: 根据异能的响应条件挑选可响应的单位，这里的分组信息可以优化到战斗流程中维护独立的链表，避免每次生成的浪费
 
 	-- TODO: 判断当前异能是否发动（有可能开始就不能发动此异能的情况存在，如某些异能指明某异能不能发动）
 	if ability.invalid then
 		return
 	end
+	
+	-- 得到响应窗口规则
+	local isAnswerValide = answerTypeAssistTable[ability.answerType]
+	
+	assert(isAnswerValide and type(isAnswerValide) == 'function', 
+		string.format('isAnswerValide must be a function, please check the assist table if there is a function handle the "%s" RULE', tonumber(ability.answerType)))
+	
+	-- 这里判断是否异能符合响应类型，如是异能拥有者是行动者时发动，或者是防御者时发动等等
+	if not isAnswerValide(ability, actionUnit, defendUnit, totalUnitArray) then return end
+	
+	print('-- depositeAbility actionUnit', actionUnit.name)
+	
+	-- TODO: 这里过滤出己方和敌方数组，可以提高判断效率
+-- 	-- 敌方单位数组
+-- 	local enemyUnitArray = {}
+-- 	-- 己方单位数组
+-- 	local selfUnitArray = {}
 
-	-- 敌方单位数组
-	local enemyUnitArray = {}
-	-- 己方单位数组
-	local selfUnitArray = {}
-
-	-- 循环分组
-	local groupID = controlUnit.groupID
-	table.foreach(totalUnitArray, function(_, unit)
-		if unit.groupID == groupID then
-			table.insert(selfUnitArray, unit)
-		else
-			table.insert(enemyUnitArray, unit)
-		end
-	end)
+-- 	-- 循环分组
+-- 	local groupID = ability.controler.groupID
+-- 	table.foreach(totalUnitArray, function(_, unit)
+-- 		if unit.groupID == groupID then
+-- 			table.insert(selfUnitArray, unit)
+-- 		else
+-- 			table.insert(enemyUnitArray, unit)
+-- 		end
+-- 	end)
 
 	-- 1.得到条件判断的目标单位
-	local conditionTargetUnit = nil
+	local result = false
 	-- 判断异能的发动条件是否满足（目前仅支持一种条件，所以只取第一个）
 	local condition = ability.answerCondition[1]
-	-- 得到对应获取目标对象的函数
-	local getTargetFunction = targetAssistTable[condition.targetInfluenceRange]
-
-	if type(getTargetFunction) == 'function' then
-		-- 通过函数调用获取目标对象（数组）
-		conditionTargetUnit = getTargetFunction()
-	end
-
-	if type(conditionTargetUnit) == 'table' then
-		if conditionTargetUnit.className == 'CARD' then
-			-- 表示是单个目标
-			print('用于判断条件的目标是单个单位')
-		else
-			-- 表示多个目标
+	print('-- depositeAbility, condition.influenceType', condition.influenceType)
+	if tonumber(condition.influenceType) == CONSTANTS.ABILITY_CONDITION_INFLUENCE_PROPERTY.INVALIDE then	
+		-- 无效表示无条件发动
+		result = true
+	else
+		local conditionTargetUnit = nil
+		print('-- depositeAbility, condition.targetInfluenceRange', condition.targetInfluenceRange)
+		-- 得到对应获取目标对象的函数
+		local getTargetFunction = targetAssistTable[tonumber(condition.targetInfluenceRange)]
+		print('-- depositeAbility, getTargetFunction', type(getTargetFunction))
+		if type(getTargetFunction) == 'function' then
+			-- 通过函数调用获取目标对象（数组）
+			conditionTargetUnit = getTargetFunction(totalUnitArray, actionUnit, defendUnit)
+			print('-- depositeAbility conditionTargetUnit num', #conditionTargetUnit)
 		end
-	end
 
-	-- 2.得到目标条件属性（用于比对的值）
-	local getConditionValueFunction = targetConditionAssistTable[condition.influenceType]
+		if type(conditionTargetUnit) == 'table' then
+			if conditionTargetUnit.className == 'CARD' then
+				-- 表示是单个目标
+				print('用于判断条件的目标是单个单位')
+			else
+				-- 表示多个目标
+				print('用于判断条件的目标是多个单位')
+			end
+		end
+		
+		-- 2.得到目标条件属性（用于比对的值）
+		
+		local getConditionValueFunction = targetConditionAssistTable[tonumber(condition.influenceType)]
 
-	local targetConditionValue = nil
+		print('-- depositeAbility condition.influenceType', condition.influenceType)
+		
+		local targetConditionValue = nil
 
-	-- 得到目标条件值（用于比对）
-	if type(getConditionValueFunction) == 'function' then
-		targetConditionValue = getConditionValueFunction(conditionTargetUnit)
-	end
+		-- 得到目标条件值（用于比对）
+		if type(getConditionValueFunction) == 'function' then
+			targetConditionValue = getConditionValueFunction(conditionTargetUnit)
+		end
 
-	-- 得到条件发动函数
-	local getConditionCompareFunction = conditionCompareAssistTable[condition.judgeStandard]
-
-	local result = false
-	if type(getConditionCompareFunction) == 'function' then
-		-- 比对结果
-		result = getConditionCompareFunction(targetConditionValue, condition.influenceValue)
+		-- 得到条件发动函数
+		local getConditionCompareFunction = conditionCompareAssistTable[tonumber(condition.judgeStandard)]
+		
+		print('-- depositeAbility condition.judgeStandard', condition.judgeStandard)
+		print('-- depositeAbility condition.influenceValue', condition.influenceValue)
+		print('-- depositeAbility getConditionCompareFunction', type(getConditionCompareFunction))
+		
+		if type(getConditionCompareFunction) == 'function' then
+			-- 比对结果
+			result = getConditionCompareFunction(tonumber(targetConditionValue), tonumber(condition.influenceValue))
+		end
 	end
 
 	-- 3.判断是否可以发动异能
@@ -189,15 +327,17 @@ local depositeAbility = function(ability, controlUnit, totalUnitArray)
 	local abilityEffect = ability.effect
 	table.foreach(abilityEffect, function(_, effect)
 		-- 得到异能作用目标获取函数
-		local getAbilityTargetFunction = targetAssistTable(effect.targetInfluenceRange)
+		local getAbilityTargetFunction = targetAssistTable[tonumber(effect.targetInfluenceRange)]
+		assert(getAbilityTargetFunction and type(getAbilityTargetFunction) == 'function', '')
 		
-		local target = getAbilityTargetFunction(totalUnitArray, controlUnit.groupID)
-		
-		if effect.effectType == CONSTANTS.EFFECT_TYPE_PROPERTY then
+		local target = getAbilityTargetFunction(totalUnitArray, actionUnit, defendUnit)
+		print('-- depositeAbility abilityTarget num', #target)
+		print('-- depositeAbility effect.mode', effect.mode)
+		if tonumber(effect.mode) == CONSTANTS.EFFECT_TYPE_PROPERTY then
 			-- 对属性的影响
-			doAbilityEffect(target, effect) 
-		elseif effect.effectType == CONSTANTS.EFFECT_TYPE_ABILITY then
-			-- 异能影响的，暂未实现
+			doAbilityEffect(target, effect)
+		elseif tonumber(effect.mode) == CONSTANTS.EFFECT_TYPE_ABILITY then
+			-- TODO: 异能影响的，暂未实现
 		end
 		
 	end)
@@ -205,10 +345,9 @@ local depositeAbility = function(ability, controlUnit, totalUnitArray)
 end
 
 -- 死亡结算
--- 死亡结算并不是当一个单位血到0后立即发生，而是需要在行动方结束后进行
 -- 一般需要传入所有的单位进行轮询判断，某些特殊异能可以引发立即死亡结算，比如是会影响行动方的生命或者行动类
 -- 这里涉及到行动方是以单体为目标还是以多个单位为目标
-local depositeDeath = function(unit, totalUnit) -- 在每个行动后都需要死亡结算
+local depositeDeath = function(unit, defendUnit, totalUnit) -- 在每个行动后都需要死亡结算
 	-- 这里暂时不判断unit是否是卡牌，由外部调用保证
 
 	-- 当单位死亡时，才进行结算
@@ -223,13 +362,13 @@ local depositeDeath = function(unit, totalUnit) -- 在每个行动后都需要�
 		for _, deathAbility in ipairs(deathAbilityArray) do
 			print(string.format("Card [%s]'s death Ability [%s] start...", unit.name, deathAbility.name))
 			-- 结算异能
-			depositeAbility(deathAbility, unit, totalUnit)
+			depositeAbility(deathAbility, unit, defendUnit, totalUnit)
 		end
 	end
 end
 
 -- 整体死亡结算，循环每个对象
-local deathDeposite = function(totalUnitArray)
+local deathDeposite = function(totalUnitArray, defendUnit)
 	-- 拷贝一个全局数据给死亡清算函数中的异能结算函数使用
 	local ttuArray = {}
 	table.foreachi(totalUnitArray, function(_, unit)
@@ -237,13 +376,23 @@ local deathDeposite = function(totalUnitArray)
 	end)
 	
 	table.foreachi(totalUnitArray, function(_, unit)
-		depositeDeath(unit, ttuArray)
+		depositeDeath(unit, defendUnit, ttuArray)
 	end)
 end
 
 -- 攻击结算，一般简单为攻击者的攻击力减去防御者的血
-local depositeAttack = function(attackUnit, defendUnit)
-	defendUnit:getHurt(attackUnit.attack)
+local depositeAttack = function(actionUnit, defendUnit, totalUnitArray)
+
+	if defendUnit then
+		-- 记录造成的伤害值（非造成的伤害值，非击穿，值计算实际伤害）
+		if defendUnit.hitPoint < actionUnit.attack then
+			BattleSummaryDataTbl.currentActionInjuryValue = defendUnit.hitPoint
+		else
+			BattleSummaryDataTbl.currentActionInjuryValue = actionUnit.attack 
+		end
+		
+		defendUnit:getHurt(-actionUnit.attack)
+	end
 end
 
 -- 清算函数辅助表
@@ -283,6 +432,8 @@ local GameLogicTable =
 				{window = CONSTANTS.ANSWER_WINDOW.WINDOW_TARGET_CHOOSE_AFTER},
 				-- 攻击之前
 				{window = CONSTANTS.ANSWER_WINDOW.WINDOW_ATTACK_BEFORE},
+				-- 攻击时
+				{window = CONSTANTS.ANSWER_WINDOW.WINDOW_ATTACK},
 				-- 攻击之后
 				{window = CONSTANTS.ANSWER_WINDOW.WINDOW_ATTACK_AFTER},
 				-- 防御之前
@@ -304,8 +455,8 @@ local GameLogicTable =
 local triggerAbility = function(ability)
 	assert(ability.className == 'ABILITY', 'triggerAbility failed')
 	-- 把当前异能按响应属性增加到对应列表中
-	local answerWindowTable = answerWindowAssistTable[ability.answerWindow]
-	if answerWindowAssistTable then
+	local answerWindowTable = answerWindowAssistTable[tonumber(ability.answerWindow)]
+	if answerWindowTable then
 		-- 把异能加入窗口响应表
 		table.insert(answerWindowTable, ability)
 	end
@@ -416,26 +567,9 @@ local getAnswerAbilityArray = function(status)
 	return abilityArray
 end
 
--- 攻击单位数据输出
-local showAttackUnit = function(unit)
-	if unit then
-		print('攻击单位 name', unit.name, 'round', unit.round, 'groupID', unit.groupID, 'hitPoint', unit.hitPoint, 'attack', unit.attack)
-	end
-end
-
--- 防御单位数据输出
-local showDefendUnit = function(unit)
-	if unit then
-		print('防御单位 name', unit.name, 'round', unit.round, 'groupID', unit.groupID, 'hitPoint', unit.hitPoint)
-	end
-end
-
--- 显示单位数据
-local showUnit = function(unit)
-	if unit then
-		print(unit.name, 'groupID', unit.groupID, 'attack', unit.attack, 'speed', unit.speed, 'hitPoint', unit.hitPoint)
-	end
-end
+-- 得到卡牌堆
+-- local CardHeap = comm.readCardData("card_data.txt")
+local CardHeap = comm.readCardDataFromDB()
 
 -- 战斗函数
 -- @class function
@@ -446,7 +580,7 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 	local retData = {
 		bFirstWin = false	-- 先默认定义非第一个胜利
 	}
-
+	
 	--[[
 		战斗流程
 	]]
@@ -454,7 +588,7 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 	local nRound = 0
 	
 	-- 存活表
-	local aliveTable = {}
+	local aliveTable = BattleSummaryDataTbl.aliveTable
 	
 	table.foreachi(GameLogicTable.flow, function(_, flowStep)
 		-- 缓存下window，方便后面简化书写
@@ -478,16 +612,12 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 				end
 				showUnit(unit)
 				
-				local abilityArray = unit.ability
+				local abilityArray = unit.abilitys
 				-- 判断下当前卡牌是否拥有异能
 				if abilityArray and type(abilityArray) == 'table' then
-					table.foreachi(abilityArray, function(_, abilityID)
-						-- 通过异能的ID得到异能对象
-						local ability = Ability.GetAbilityObj(abilityID)
-						if ability then
-							-- 把当前异能加入窗口响应列表
-							triggerAbility(ability)
-						end
+					table.foreachi(abilityArray, function(_, ability)
+						-- 把当前异能加入窗口响应列表
+						triggerAbility(ability)
 					end)
 				end
 			end)
@@ -526,10 +656,10 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 						if type(abilityArray) == 'table' then
 							table.foreach(abilityArray, function(_, ability)
 								-- 响应异能
-								depositeAbility(ability, ability.controler, getCombineData(cardGroupOne, cardGroupTwo))
+								depositeAbility(ability, actionUnit, nil, getCombineData(cardGroupOne, cardGroupTwo))
 								
 								-- 异能响应结束后要进行死亡窗口结算
-								deathDeposite(getCombineData(cardGroupOne, cardGroupTwo))
+								deathDeposite(getCombineData(cardGroupOne, cardGroupTwo), nil)
 							end)
 						end
 					-- 行动循环
@@ -538,42 +668,54 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 						repeat
 							for _, actionCircle in ipairs(roundCircle) do
 -- 								print('actionCircle.window:', actionCircle.window)
+								print(string.format("当前窗口为[%s]", tostring(CONSTANTS.ANSWER_WINDOW_DESC[actionCircle.window])))
 								-- 2.得到当前窗口的异能响应列表，并逐一响应
 								local abilityArray = getAnswerAbilityArray(actionCircle.window)
 								if type(abilityArray) == 'table' then
-									table.foreach(abilityArray, function(_, ability)
+									table.foreachi(abilityArray, function(_, ability)
 										-- 响应异能
-										depositeAbility(ability, ability.controler, getCombineData(cardGroupOne, cardGroupTwo))
+										depositeAbility(ability, actionUnit, defendUnit, getCombineData(cardGroupOne, cardGroupTwo))
 										
 										-- 异能响应结束后要进行死亡窗口结算
-										deathDeposite(getCombineData(cardGroupOne, cardGroupTwo))
+										deathDeposite(getCombineData(cardGroupOne, cardGroupTwo), defendUnit)
 									end)
 								end
-								
- 								print(string.format("当前窗口为[%s]", tostring(CONSTANTS.ANSWER_WINDOW_DESC[actionCircle.window])))
 								
 								-- 对选出的单位进行动作
 								if actionCircle.window == CONSTANTS.ANSWER_WINDOW.WINDOW_ACTION_START then
 									-- 选出行动单位
 									actionUnit = getActionUnit(nRound, cardGroupOne, cardGroupTwo)
 									showAttackUnit(actionUnit)
+									
+									-- 清空攻击单位造成的伤害值
+									BattleSummaryDataTbl.currentActionInjuryValue = 0
+									
 								elseif actionCircle.window == CONSTANTS.ANSWER_WINDOW.WINDOW_TARGET_CHOOSE then
 									-- 攻击前选出对手
 									defendUnit = getDefendUnit(actionUnit, getCombineData(cardGroupOne, cardGroupTwo))
 									showDefendUnit(defendUnit)
+								elseif actionCircle.window == CONSTANTS.ANSWER_WINDOW.WINDOW_ATTACK then
+									-- 判断当前是否不能攻击状态
+									if actionUnit.stopRound and actionUnit.stopRound > 0 then
+										-- 减少冻结回合数
+										actionUnit:modifyProperty("stopRound", -1)
+									else
+										-- 攻击后，对应防御单位受伤
+										depositeAttack(actionUnit, defendUnit, getCombineData(cardGroupOne, cardGroupTwo))
+									end
 								elseif actionCircle.window == CONSTANTS.ANSWER_WINDOW.WINDOW_ATTACK_AFTER then
-									-- 攻击后，对应防御单位受伤
-									if defendUnit then
-										defendUnit:getHurt(actionUnit.attack)
-										if defendUnit:isDead() then
-											-- 对象死亡后更新存活列表
-											aliveTable[defendUnit.groupID] = aliveTable[defendUnit.groupID] - 1
-											showDefendUnit(defendUnit)
-										end
+									if defendUnit:isDead() then
+										-- 对象死亡后更新存活列表
+										BattleSummaryDataTbl.aliveTable[defendUnit.groupID] = BattleSummaryDataTbl.aliveTable[defendUnit.groupID] - 1
+										-- 死亡结算
+										depositeDeath(actionUnit, defendUnit, totalUnitArray)
+										
+										showDefendUnit(defendUnit)
 									end
 								elseif actionCircle.window == CONSTANTS.ANSWER_WINDOW.WINDOW_ACTION_END then
 -- 									print('actionUnit', actionUnit)
 									if actionUnit then
+										-- 设置当前单位本回合已经行动标志
 										actionUnit:setRound(nRound)
 -- 										showAttackUnit(actionUnit)
 									end
@@ -602,10 +744,6 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 	return retData
 end
 
--- 得到卡牌堆
--- local CardHeap = comm.readCardData("card_data.txt")
-local CardHeap = comm.readCardDataFromDB()
-
 -- 处理一次战役
 -- @class function
 -- @param playerOne 第一个玩家的ID
@@ -626,12 +764,42 @@ local function HandleBattle(playerOne, playerTwo)
 
 	-- 3. 从牌库中选择一局游戏中的需要的牌组
 	--     可以是3组，每组3张，或者是1组，一组3张或者6张
-	local cardBattleGroupPlayerOne = comm.chooseActionCardGroupFromStore(cardLibPlayerOne, 1, 3)
-	local cardBattleGroupPlayerTwo = comm.chooseActionCardGroupFromStore(cardLibPlayerTwo, 2, 3)
+	local cardBattleGroupPlayerOne = nil --comm.chooseActionCardGroupFromStore(cardLibPlayerOne, 1, 3)
+	local cardBattleGroupPlayerTwo = nil --scomm.chooseActionCardGroupFromStore(cardLibPlayerTwo, 2, 3)
 
 -- 	table.foreach(cardBattleGroupPlayerOne, print)
 -- 	table.foreach(cardBattleGroupPlayerTwo, print)
 
+	-- for test
+	local cardOne = {}
+	for i = 1, 3 do
+		local singleCard = table.dup(CardHeap[i]);
+		if singleCard == nil then
+			error(string.format("cardNum is %d", i));
+		end
+		
+		singleCard.groupID = 1
+		local cardData = Card.CardPropertyClass:new(singleCard);
+		table.insert(cardOne, cardData);
+	end
+	cardBattleGroupPlayerOne = cardOne
+	
+	local cardTwo = {}
+	for i = 132, 134 do
+		local singleCard = table.dup(CardHeap[i]);
+		if singleCard == nil then
+			error(string.format("cardNum is %d", i));
+		end
+		
+		singleCard.groupID = 2
+		local cardData = Card.CardPropertyClass:new(singleCard);
+		table.insert(cardTwo, cardData);
+	end
+	
+	cardBattleGroupPlayerTwo = cardTwo
+	
+	print('test cardOne num:', #cardOne, 'test cardTwo num:', #cardTwo)
+	
 	-- 4. 根据当前的配置决定进行几次对战
 	local battleResult = doBattle(cardBattleGroupPlayerOne, cardBattleGroupPlayerTwo)
 
