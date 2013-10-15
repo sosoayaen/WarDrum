@@ -129,13 +129,20 @@ CONSTANTS = {
 	
 		INVALIDE = 0,
 		
+		-- 攻击力
 		ATTACK = 1,
 		
+		-- 血量
 		HITPOINT = 2,
 		
+		-- 速度
 		SPEED = 3,
-		-- 是否受伤
-		GETHURT = 4,
+		
+		-- 攻击是否造成伤害
+		ATTACK_HURT = 9,
+		
+		-- 是否少血受伤，和原始血量做比较
+		GET_HURT = 10,
 	},
 	-- 异能影响的单位范围，全员和单体
 	-- ABILITY_TARGET_INFLUENCE_RANGE = {

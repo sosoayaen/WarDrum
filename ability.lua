@@ -100,7 +100,7 @@ local AbilityClass = {
 				influenceValue = 1,
 
 				-- 条件标准，表示是大于、小于、等于
-				judgeStandard = CONSTANTS.JUDGE_STANDARD.GT,
+				judgeStandard = CONSTANTS.JUDGE_STANDARD.GREAT_THAN,
 			},
 		},
 

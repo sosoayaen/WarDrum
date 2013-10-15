@@ -113,7 +113,9 @@ function CardPropertyClass:new(o)
 	o = o or {}
 	
 	-- 设置原始数据
-	util.SetMetaData(o, self)
+	local orignial = {}
+	util.SetMetaData(o, orignial)
+	o.original = orignial
 	
 	-- 产生异能对象
 	local abilitys = {}
@@ -168,8 +170,9 @@ end
 -- @class function
 -- @param key 键
 function CardPropertyClass:getOriginalValue(key)
-	local mt = getmetatable(self)
-	return mt[key]
+	-- local mt = getmetatable(self)
+	-- return mt[key]
+	return self.original[key]
 end
 
 --- 设置对象是否不能添加自定义成员
@@ -212,7 +215,9 @@ function CardPropertyClass:getHurt(atk)
 	if self.hitPoint > 0 then
 		self.hitPoint = self.hitPoint + atk
 	else
-		error('Target is invalid!')
+		print('Target is Dead!!')
+		-- 目标已经死亡，无需继续处理
+		return
 	end
 	print('getHurt', self.name, 'hitPoint', self.hitPoint)
 	
@@ -224,6 +229,13 @@ function CardPropertyClass:getHurt(atk)
 			deathDespositeCallbackFunction(self)
 		end
 	end
+end
+
+-- -判断是否受伤
+-- @class funciton
+-- @return true 单位受伤 false 单位未受伤
+function CardPropertyClass:isHurt()
+	return self.hitPoint < self.original.hitPoint
 end
 
 --- 修改属性

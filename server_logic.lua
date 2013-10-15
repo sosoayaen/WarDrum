@@ -16,6 +16,12 @@ local BattleSummaryDataTbl = {
 	aliveTable = {},
 }
 
+local showOriginalProperty = function(unit, property)
+	if unit then
+		print(property, unit:getOriginalValue(property))
+	end
+end
+
 -- 攻击单位数据输出
 local showAttackUnit = function(unit)
 	if unit then
@@ -122,10 +128,25 @@ local targetConditionAssistTable =
 	[CONSTANTS.ABILITY_CONDITION_INFLUENCE_PROPERTY.HITPOINT] = function(conditionTargetUnitArray) end,
 	-- 速度
 	[CONSTANTS.ABILITY_CONDITION_INFLUENCE_PROPERTY.SPEED] = function(conditionTargetUnitArray) end,
-	-- 受伤，或者造成伤害
-	[CONSTANTS.ABILITY_CONDITION_INFLUENCE_PROPERTY.GETHURT] = function(conditionTargetUnitArray) 
+	-- 攻击者造成伤害
+	[CONSTANTS.ABILITY_CONDITION_INFLUENCE_PROPERTY.ATTACK_HURT] = function(conditionTargetUnitArray) 
 		-- 返回全局的当前行动后造成的伤害
 		return BattleSummaryDataTbl.currentActionInjuryValue
+	end,
+	-- 是否受伤（血不满）
+	[CONSTANTS.ABILITY_CONDITION_INFLUENCE_PROPERTY.GET_HURT] = function(conditionTargetUnitArray) 
+		-- 返回目标是否少血
+		if conditionTargetUnitArray.className == 'CARD' then
+			return conditionTargetUnitArray:isHurt()
+		else
+			for _, unit in ipairs(conditionTargetUnitArray)
+				-- 这里只要有一个单位是满足受伤状态则返回true，否则返回false
+				if unit:isHurt() then
+					return true
+				end
+			end
+		end
+		return false
 	end,
 }
 
@@ -772,7 +793,7 @@ local function HandleBattle(playerOne, playerTwo)
 
 	-- for test
 	local cardOne = {}
-	for i = 1, 3 do
+	for i = 3, 7 do
 		local singleCard = table.dup(CardHeap[i]);
 		if singleCard == nil then
 			error(string.format("cardNum is %d", i));
@@ -785,7 +806,7 @@ local function HandleBattle(playerOne, playerTwo)
 	cardBattleGroupPlayerOne = cardOne
 	
 	local cardTwo = {}
-	for i = 132, 134 do
+	for i = 132, 136 do
 		local singleCard = table.dup(CardHeap[i]);
 		if singleCard == nil then
 			error(string.format("cardNum is %d", i));
@@ -830,3 +851,28 @@ HandleBattle({userID = 111}, {userID = 222});
 -- local a = Ability.GetAbilityObj(1)
 
 -- print(a.name, a.description)
+
+-- 以下代码测试原始数据表的数据是否会重复
+-- print(string.rep('=', 50))
+-- local singleCard = table.dup(CardHeap[10]);
+-- if singleCard == nil then
+-- 	error(string.format("cardNum is %d", 10));
+-- end
+
+-- singleCard.groupID = 1
+-- local cardData = Card.CardPropertyClass:new(singleCard);
+
+-- singleCard = table.dup(CardHeap[15]);
+-- if singleCard == nil then
+-- 	error(string.format("cardNum is %d", 15));
+-- end
+-- singleCard.groupID = 2
+-- local cardData2 = Card.CardPropertyClass:new(singleCard);
+
+-- showAttackUnit(cardData)
+-- cardData:getHurt(-3)
+-- showOriginalProperty(cardData, 'hitPoint')
+
+-- showAttackUnit(cardData2)
+-- cardData2:getHurt(-3)
+-- showOriginalProperty(cardData2, 'hitPoint')
