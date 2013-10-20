@@ -110,13 +110,28 @@ local AbilityClass = {
 			{
 				-- 效果作用类型，目前仅有状态效果、属性效果
 				-- 状态效果等同于增加一个异能，而属性则为在三围上有效果
+				-- 仅表示当前用作结果是作用的目标的基础属性上，还是会附加一个异能作为作用效果
 				mode = CONSTANTS.EFFECT_TYPE_PROPERTY,
 
+				-- 表示异能作用的目标范围
 				targetInfluenceRange = CONSTANTS.TARGET_ME,
 
+				-- 表示作用值的属性，如果mode为ability，则取值无意义
 				influenceType = CONSTANTS.EFFECT_ATTACK,
 
+				-- 这个值是会带正负号的
+				-- 如果攻击作用值类型是普通的value，则直接把这个值加到对应属性上
+				-- 如果攻击作用值是宏定义，则这个值仅表示正负，小于0为负，大于等于0为正
 				influenceValue = 1,
+				
+				-- 影响值类型，表示作用值是固定的数值，或者是系统内部宏定义的动态值决定
+				-- 如果此值为CONSTANTS.EFFECT_PROPERTY_TYPE_VALUE，则后面的值无意义，表示作用值是一个固定的值，比如-2，比如10。
+				influenceValueType = CONSTANTS.EFFECT_PROPERTY_TYPE_VALUE,
+
+				-- 影响值宏定义对应的值，表示什么宏定义类型，是对作用值的一个具体描述
+				-- 数值可以是由系统内的动态值决定，如攻击者的攻击力，或者防御者的攻击力，攻击者的血量或者防御者的血量，甚至可以是速度比重
+				-- 内部的宏定义有对应独立的函数去实现
+				valueMacro = CONSTANTS.EFFECT_VALUE_MACRO.INVALID,
 			}
 		},
 

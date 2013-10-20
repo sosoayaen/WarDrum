@@ -139,7 +139,7 @@ local targetConditionAssistTable =
 		if conditionTargetUnitArray.className == 'CARD' then
 			return conditionTargetUnitArray:isHurt()
 		else
-			for _, unit in ipairs(conditionTargetUnitArray)
+			for _, unit in ipairs(conditionTargetUnitArray) do
 				-- 这里只要有一个单位是满足受伤状态则返回true，否则返回false
 				if unit:isHurt() then
 					return true
@@ -185,11 +185,21 @@ local propertyAssistTable =
 -- @class function
 -- @param target 影响的目标
 -- @param effect 效果
-local doAbilityEffect = function(targets, effect)
+-- @param nFixValue 如果是宏定义的效果值，则在外部修正后传入
+local doAbilityEffect = function(targets, effect, nFixValue)
 	-- 得到影响的属性
 	local property = propertyAssistTable[tonumber(effect.influenceType)]
 	assert(property, string.format('-- doAbilityEffect, effect.influenceType %s', effect.influenceType))
 	local value = tonumber(effect.influenceValue)
+	-- 由修正值修正作用值
+	if nFixValue then
+		-- value中的值仅仅用作判断正负
+		if value < 0 then
+			value = -1 * nFixValue
+		else
+			value = nFixValue
+		end
+	end
 	
 	-- target可能是多个的数组
 	table.foreach(targets, function(_, unit)
@@ -324,8 +334,15 @@ local depositeAbility = function(ability, actionUnit, defendUnit, totalUnitArray
 			targetConditionValue = getConditionValueFunction(conditionTargetUnit)
 		end
 
+		local judgeStandard = tonumber(condition.judgeStandard)
+		if judgeStandard == 0 then
+			-- 如果是无条件发动，则直接赋值为true
+			print('-- despositeAbility ability lanuch MUST')
+			result = true
+		end
+		
 		-- 得到条件发动函数
-		local getConditionCompareFunction = conditionCompareAssistTable[tonumber(condition.judgeStandard)]
+		local getConditionCompareFunction = conditionCompareAssistTable[judgeStandard]
 		
 		print('-- depositeAbility condition.judgeStandard', condition.judgeStandard)
 		print('-- depositeAbility condition.influenceValue', condition.influenceValue)
@@ -349,14 +366,24 @@ local depositeAbility = function(ability, actionUnit, defendUnit, totalUnitArray
 	table.foreach(abilityEffect, function(_, effect)
 		-- 得到异能作用目标获取函数
 		local getAbilityTargetFunction = targetAssistTable[tonumber(effect.targetInfluenceRange)]
-		assert(getAbilityTargetFunction and type(getAbilityTargetFunction) == 'function', '')
+		assert(getAbilityTargetFunction and type(getAbilityTargetFunction) == 'function',
+			string.format('effect.targetInfluenceRange:%s', effect.targetInfluenceRange))
 		
 		local target = getAbilityTargetFunction(totalUnitArray, actionUnit, defendUnit)
 		print('-- depositeAbility abilityTarget num', #target)
 		print('-- depositeAbility effect.mode', effect.mode)
 		if tonumber(effect.mode) == CONSTANTS.EFFECT_TYPE_PROPERTY then
 			-- 对属性的影响
-			doAbilityEffect(target, effect)
+			local nFixValue = nil
+			-- 影响值是否是宏定义
+			if tonumber(effect.influenceValueType) == CONSTANTS.EFFECT_PROPERTY_TYPE_MACRO then
+				-- 确定修正值
+				if tonumber(effect.valueMacro) == CONSTANTS.EFFECT_VALUE_MACRO.ACTION_UNIT_ATTACK then
+					nFixValue = actionUnit.attack
+				end
+			end
+			
+			doAbilityEffect(target, effect, nFixValue)
 		elseif tonumber(effect.mode) == CONSTANTS.EFFECT_TYPE_ABILITY then
 			-- TODO: 异能影响的，暂未实现
 		end
@@ -592,6 +619,21 @@ end
 -- local CardHeap = comm.readCardData("card_data.txt")
 local CardHeap = comm.readCardDataFromDB()
 
+-- 异能响应窗口的结算
+local function abilityDepositeByWindow(window, actionUnit, defendUnit, totalUnit)
+	-- 得到当前窗口的异能响应列表，并逐一响应（这里只有回合开始和回合结束的两个窗口）
+	local abilityArray = getAnswerAbilityArray(window)
+	if type(abilityArray) == 'table' then
+		table.foreach(abilityArray, function(_, ability)
+			-- 响应异能
+			depositeAbility(ability, actionUnit, defendUnit, totalUnit)
+			
+			-- 异能响应结束后要进行死亡窗口结算
+			deathDeposite(totalUnit, defendUnit)
+		end)
+	end
+end
+
 -- 战斗函数
 -- @class function
 -- @param cardGroupOne 玩家1选取好的卡组
@@ -672,17 +714,18 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 -- 						print(string.format("当前窗口为[%s]", tostring(CONSTANTS.ANSWER_WINDOW_DESC[roundCircle.window])))
 						
 						-- 2.得到当前窗口的异能响应列表，并逐一响应（这里只有回合开始和回合结束的两个窗口）
-						local abilityArray = getAnswerAbilityArray(roundCircle.window)
-						
-						if type(abilityArray) == 'table' then
-							table.foreach(abilityArray, function(_, ability)
-								-- 响应异能
-								depositeAbility(ability, actionUnit, nil, getCombineData(cardGroupOne, cardGroupTwo))
-								
-								-- 异能响应结束后要进行死亡窗口结算
-								deathDeposite(getCombineData(cardGroupOne, cardGroupTwo), nil)
-							end)
-						end
+-- 						local abilityArray = getAnswerAbilityArray(roundCircle.window)
+-- 						
+-- 						if type(abilityArray) == 'table' then
+-- 							table.foreach(abilityArray, function(_, ability)
+-- 								-- 响应异能
+-- 								depositeAbility(ability, actionUnit, nil, getCombineData(cardGroupOne, cardGroupTwo))
+-- 								
+-- 								-- 异能响应结束后要进行死亡窗口结算
+-- 								deathDeposite(getCombineData(cardGroupOne, cardGroupTwo), nil)
+-- 							end)
+-- 						end
+						abilityDepositeByWindow(roundCircle.window, actionUnit, nil, getCombineData(cardGroupOne, cardGroupTwo))
 					-- 行动循环
 					else
 						local defendUnit = nil
@@ -691,16 +734,7 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 -- 								print('actionCircle.window:', actionCircle.window)
 								print(string.format("当前窗口为[%s]", tostring(CONSTANTS.ANSWER_WINDOW_DESC[actionCircle.window])))
 								-- 2.得到当前窗口的异能响应列表，并逐一响应
-								local abilityArray = getAnswerAbilityArray(actionCircle.window)
-								if type(abilityArray) == 'table' then
-									table.foreachi(abilityArray, function(_, ability)
-										-- 响应异能
-										depositeAbility(ability, actionUnit, defendUnit, getCombineData(cardGroupOne, cardGroupTwo))
-										
-										-- 异能响应结束后要进行死亡窗口结算
-										deathDeposite(getCombineData(cardGroupOne, cardGroupTwo), defendUnit)
-									end)
-								end
+								abilityDepositeByWindow(actionCircle.window, actionUnit, defendUnit, getCombineData(cardGroupOne, cardGroupTwo))
 								
 								-- 对选出的单位进行动作
 								if actionCircle.window == CONSTANTS.ANSWER_WINDOW.WINDOW_ACTION_START then
@@ -720,10 +754,11 @@ local function doBattle(cardGroupOne, cardGroupTwo)
 									if actionUnit.stopRound and actionUnit.stopRound > 0 then
 										-- 减少冻结回合数
 										actionUnit:modifyProperty("stopRound", -1)
-									else
+									else 
 										-- 攻击后，对应防御单位受伤
 										depositeAttack(actionUnit, defendUnit, getCombineData(cardGroupOne, cardGroupTwo))
 									end
+									
 								elseif actionCircle.window == CONSTANTS.ANSWER_WINDOW.WINDOW_ATTACK_AFTER then
 									if defendUnit:isDead() then
 										-- 对象死亡后更新存活列表
@@ -793,7 +828,7 @@ local function HandleBattle(playerOne, playerTwo)
 
 	-- for test
 	local cardOne = {}
-	for i = 3, 7 do
+	for i = 95, 97 do
 		local singleCard = table.dup(CardHeap[i]);
 		if singleCard == nil then
 			error(string.format("cardNum is %d", i));
@@ -806,7 +841,7 @@ local function HandleBattle(playerOne, playerTwo)
 	cardBattleGroupPlayerOne = cardOne
 	
 	local cardTwo = {}
-	for i = 132, 136 do
+	for i = 131, 133 do
 		local singleCard = table.dup(CardHeap[i]);
 		if singleCard == nil then
 			error(string.format("cardNum is %d", i));

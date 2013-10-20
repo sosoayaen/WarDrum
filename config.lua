@@ -46,7 +46,7 @@ CONSTANTS = {
 
 	-- 异能响应窗口
 	ANSWER_WINDOW = {
-		-- 循环窗口，只用作流程判断，游戏中并无次窗口定义
+		-- 循环窗口，只用作流程判断，游戏中并无此窗口定义
 		WINDOW_CIRCLE = -1,
 		-- 无效窗口，保留
 		WINDOW_INVALID = 0,
@@ -253,6 +253,25 @@ CONSTANTS = {
 	-- 异能作用于异能状态，相当于异能起效后给对应的目标增加异能
 	EFFECT_TYPE_ABILITY = 2,
 	
-	-- 用于条件判断的属性，如血量、攻击力等
-	
+	-- 用于判断当前异能作用值对应的是数值增减还是一些预定义的类型
+	-- 预定义类型要参见影响值类型
+	-- 普通值类型
+	EFFECT_PROPERTY_TYPE_VALUE = 0,
+	-- 宏定义类型
+	EFFECT_PROPERTY_TYPE_MACRO = 1,
+
+	-- 当属性值类型为宏定义时的值解释
+	EFFECT_VALUE_MACRO = {
+		-- 默认无意义值
+		INVALID = 0,
+		-- 行动者的攻击力
+		ACTION_UNIT_ATTACK = 1,
+		-- 防御者的攻击力
+		DEFEND_UNIT_ATTACK = 2,
+		-- 己方最大的攻击力
+		WE_ATTACK_MAX = 3,
+		-- 敌方最大的攻击力
+		OPPONENT_ATTACK_MAX = 4,
+		
+	},
 }
